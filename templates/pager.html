@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% block title %}Pager Dashboard - KantinKu{% endblock %}
+
+{% block head %}
+<style>
+:root { --neon: #00FF88; --neon2: #00D4FF; }
+
+.pager-hero {
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0d1b2a 100%);
+    padding: 28px 24px; color: white;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+}
+.pager-hero h1 { font-size: 28px; font-weight: 800; }
+.pager-hero p { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+.live-badge { background: rgba(0,255,136,0.15); border: 1px solid var(--neon); color: var(--neon); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.live-dot { width: 8px; height: 8px; background: var(--neon); border-radius: 50%; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
+
+.stats-bar { background: #111827; padding: 14px 24px; display: flex; gap: 32px; overflow-x: auto; }
+.stat-item { text-align: center; min-width: 80px; }
+.stat-num { font-size: 24px; font-weight: 800; color: var(--neon); }
+.stat-label { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 1px; margin-top: 2px; }
+
+.pager-layout { display: grid; grid-template-columns: 1fr 320px; gap: 0; min-height: calc(100vh - 180px); }
+@media(max-width:900px){ .pager-layout { grid-template-columns: 1fr; } }
+
+/* PAGER GRID */
+.pager-grid-section { padding: 20px; background: #0f172a; }
+.pager-section-title { color: rgba(255,255,255,0.7); font-size: 13px; font-weight: 700; letter-spacing: 2px; margin-bottom: 16px; }
+.pager-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+
+.pager-unit {
+    background: #1a1a2e; border-radius: 14px; padding: 14px 10px; text-align: center;
+    border: 2px solid #2a2a4e; cursor: pointer; transition: all 0.25s; position: relative;
+    user-select: none;
+}
+.pager-unit:hover { transform: translateY(-3px); border-color: #444488; }
+.pager-unit.available { border-color: #1f3a28; }
+.pager-unit.in_use { border-color: #3a3a1f; }
+.pager-unit.calling { border-color: var(--neon); box-shadow: 0 0 20px rgba(0,255,136,0.3); animation: callingPulse 0.8s infinite; }
+.pager-unit.charging { border-color: #3a1f5a; }
+
+@keyframes callingPulse { 0%,100% { box-shadow: 0 0 20px rgba(0,255,136,0.3); } 50% { box-shadow: 0 0 40px rgba(0,255,136,0.6); } }
+
+.pager-num { font-size: 28px; font-weight: 800; font-family: 'Space Grotesk', monospace; }
+.pager-unit.available .pager-num { color: rgba(255,255,255,0.3); }
+.pager-unit.in_use .pager-num { color: #FFD166; }
+.pager-unit.calling .pager-num { color: var(--neon); text-shadow: 0 0 10px var(--neon); }
+.pager-unit.charging .pager-num { color: #B388FF; }
+
+.pager-status-text { font-size: 10px; font-weight: 700; letter-spacing: 1px; margin-top: 6px; }
+.pager-unit.available .pager-status-text { color: rgba(255,255,255,0.25); }
+.pager-unit.in_use .pager-status-text { color: #FFD166; }
+.pager-unit.calling .pager-status-text { color: var(--neon); }
+
+.battery-bar { width: 100%; height: 4px; background: #333; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.battery-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.battery-high { background: var(--neon); }
+.battery-mid { background: #FFD166; }
+.battery-low { background: var(--danger); }
+
+.pager-actions { position: absolute; inset: 0; background: rgba(0,0,0,0.8); border-radius: 12px; display: none; flex-direction: column; gap: 6px; align-items: center; justify-content: center; padding: 8px; }
+.pager-unit:hover .pager-actions { display: flex; }
+.pager-actions .btn { width: 100%; font-size: 11px; padding: 6px 8px; }
+
+/* SIDEBAR - Orders */
+.orders-sidebar { background: #0a0a18; border-left: 1px solid #1a1a3e; padding: 16px; overflow-y: auto; }
+.order-queue { margin-bottom: 20px; }
+.queue-title { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: rgba(255,255,255,0.5); margin-bottom: 10px; }
+
+.order-ticket {
+    background: #111827; border-radius: 12px; padding: 14px; margin-bottom: 8px;
+    border-left: 3px solid transparent; transition: all 0.2s;
+}
+.order-ticket.preparing { border-left-color: #FFD166; }
+.order-ticket.ready { border-left-color: var(--neon); }
+.order-ticket:hover { background: #1a2337; }
+.ticket-num { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); letter-spacing: 1px; }
+.ticket-name { font-size: 14px; font-weight: 700; color: white; margin: 4px 0; }
+.ticket-pager { font-size: 20px; font-weight: 800; }
+.order-ticket.preparing .ticket-pager { color: #FFD166; }
+.order-ticket.ready .ticket-pager { color: var(--neon); }
+.ticket-time { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 4px; }
+.ticket-actions { display: flex; gap: 6px; margin-top: 8px; }
+.ticket-actions .btn { flex: 1; font-size: 11px; padding: 6px 8px; }
+
+/* Legend */
+.legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 12px 20px; background: #0a0a15; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,0.5); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pager-hero">
+    <div>
+        <h1>📟 Pager Control Center</h1>
+        <p>Monitor & kelola semua pager kantin secara real-time</p>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div class="live-badge"><span class="live-dot"></span> LIVE</div>
+        <span style="color:rgba(255,255,255,0.5);font-size:13px;" id="lastUpdate">Auto-refresh setiap 5 detik</span>
+    </div>
+</div>
+
+<div class="stats-bar">
+    <div class="stat-item">
+        <div class="stat-num" id="statAvail">{{ pagers|selectattr('status','eq','available')|list|length }}</div>
+        <div class="stat-label">TERSEDIA</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-num" style="color:#FFD166" id="statInUse">{{ pagers|selectattr('status','eq','in_use')|list|length }}</div>
+        <div class="stat-label">DIGUNAKAN</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-num" style="color:var(--neon)" id="statCalling">{{ pagers|selectattr('status','eq','calling')|list|length }}</div>
+        <div class="stat-label">MEMANGGIL</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-num" style="color:#B388FF" id="statCharging">{{ pagers|selectattr('status','eq','charging')|list|length }}</div>
+        <div class="stat-label">CHARGING</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-num" style="color:#FF6B6B" id="statPreparing">{{ orders_preparing|length }}</div>
+        <div class="stat-label">DIPROSES</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-num" style="color:var(--neon)" id="statReady">{{ orders_ready|length }}</div>
+        <div class="stat-label">SIAP AMBIL</div>
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#2a2a4e;border:1px solid #444"></div> Tersedia</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FFD166"></div> Digunakan</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#00FF88"></div> Memanggil Pelanggan</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#B388FF"></div> Charging</div>
+</div>
+
+<div class="pager-layout">
+    <!-- PAGER GRID -->
+    <div class="pager-grid-section">
+        <div class="pager-section-title">📟 SEMUA UNIT PAGER</div>
+        <div class="pager-grid" id="pagerGrid">
+            {% for pager in pagers %}
+            <div class="pager-unit {{ pager.status }}" id="pager-{{ pager.pager_number }}" data-num="{{ pager.pager_number }}">
+                <div class="pager-num">{{ "%02d"|format(pager.pager_number) }}</div>
+                <div class="pager-status-text">
+                    {% if pager.status == 'available' %}KOSONG
+                    {% elif pager.status == 'in_use' %}AKTIF
+                    {% elif pager.status == 'calling' %}📳 PANGGIL
+                    {% else %}⚡ CHARGE
+                    {% endif %}
+                </div>
+                <div class="battery-bar">
+                    <div class="battery-fill {% if pager.battery > 50 %}battery-high{% elif pager.battery > 20 %}battery-mid{% else %}battery-low{% endif %}"
+                         style="width:{{ pager.battery }}%"></div>
+                </div>
+                <div class="pager-actions">
+                    {% if pager.status == 'in_use' %}
+                    <button class="btn btn-success btn-sm" onclick="callPager({{ pager.pager_number }},event)">📳 Panggil</button>
+                    <button class="btn btn-danger btn-sm" onclick="resetPager({{ pager.pager_number }},event)">✓ Selesai</button>
+                    {% elif pager.status == 'calling' %}
+                    <button class="btn btn-danger btn-sm" onclick="resetPager({{ pager.pager_number }},event)">✓ Diambil</button>
+                    {% elif pager.status == 'available' %}
+                    <button class="btn btn-warning btn-sm" onclick="chargePager({{ pager.pager_number }},event)">⚡ Charge</button>
+                    {% elif pager.status == 'charging' %}
+                    <button class="btn btn-success btn-sm" onclick="donePager({{ pager.pager_number }},event)">✓ Selesai</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ORDER QUEUE SIDEBAR -->
+    <div class="orders-sidebar">
+        <div class="order-queue">
+            <div class="queue-title">🔥 SEDANG DIPROSES ({{ orders_preparing|length }})</div>
+            <div id="preparingList">
+                {% for order in orders_preparing %}
+                <div class="order-ticket preparing" id="ticket-{{ order.id }}">
+                    <div class="ticket-num">{{ order.order_number }}</div>
+                    <div class="ticket-name">{{ order.customer_name }}</div>
+                    <div>
+                        <span style="font-size:11px;color:rgba(255,255,255,0.4);">Pager </span>
+                        <span class="ticket-pager">{{ "%02d"|format(order.pager_number or 0) }}</span>
+                    </div>
+                    <div class="ticket-time">🕒 {{ order.created_at.strftime('%H:%M') }}</div>
+                    <div class="ticket-actions">
+                        <button class="btn btn-success btn-sm" onclick="callPager({{ order.pager_number }}, event)">📳 Panggil</button>
+                    </div>
+                </div>
+                {% else %}
+                <div style="color:rgba(255,255,255,0.2);font-size:13px;text-align:center;padding:20px;">Tidak ada pesanan</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="order-queue">
+            <div class="queue-title" style="color:rgba(0,255,136,0.7);">✅ SIAP DIAMBIL ({{ orders_ready|length }})</div>
+            <div id="readyList">
+                {% for order in orders_ready %}
+                <div class="order-ticket ready" id="ticket-ready-{{ order.id }}">
+                    <div class="ticket-num">{{ order.order_number }}</div>
+                    <div class="ticket-name">{{ order.customer_name }}</div>
+                    <div>
+                        <span style="font-size:11px;color:rgba(255,255,255,0.4);">Pager </span>
+                        <span class="ticket-pager">{{ "%02d"|format(order.pager_number or 0) }}</span>
+                    </div>
+                    <div class="ticket-actions">
+                        <button class="btn btn-danger btn-sm" onclick="resetPager({{ order.pager_number }}, event)">✓ Sudah Diambil</button>
+                    </div>
+                </div>
+                {% else %}
+                <div style="color:rgba(0,255,136,0.15);font-size:13px;text-align:center;padding:20px;">Belum ada yang siap</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function callPager(num, e) {
+    if (e) e.stopPropagation();
+    const res = await fetch(`/api/pager/call/${num}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) { showToast(`📳 Pager ${num} dipanggil!`, 'success'); refreshData(); }
+}
+
+async function resetPager(num, e) {
+    if (e) e.stopPropagation();
+    const res = await fetch(`/api/pager/reset/${num}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) { showToast(`✅ Pager ${num} dikembalikan`, 'success'); refreshData(); }
+}
+
+async function chargePager(num, e) {
+    if (e) e.stopPropagation();
+    // Simple toggle to charging mode (demo)
+    showToast(`⚡ Pager ${num} charging...`, 'info');
+}
+
+async function donePager(num, e) {
+    if (e) e.stopPropagation();
+    showToast(`✅ Pager ${num} siap digunakan`, 'success');
+}
+
+async function refreshData() {
+    try {
+        const [pagersRes, ordersRes] = await Promise.all([
+            fetch('/api/pagers'),
+            fetch('/api/orders')
+        ]);
+        const pagers = await pagersRes.json();
+        const orders = await ordersRes.json();
+
+        // Update stats
+        const counts = { available: 0, in_use: 0, calling: 0, charging: 0 };
+        pagers.forEach(p => counts[p.status] = (counts[p.status]||0) + 1);
+        document.getElementById('statAvail').textContent = counts.available || 0;
+        document.getElementById('statInUse').textContent = counts.in_use || 0;
+        document.getElementById('statCalling').textContent = counts.calling || 0;
+        document.getElementById('statCharging').textContent = counts.charging || 0;
+
+        // Update pager units
+        pagers.forEach(p => {
+            const el = document.getElementById(`pager-${p.pager_number}`);
+            if (!el) return;
+            el.className = `pager-unit ${p.status}`;
+            const statusMap = { available:'KOSONG', in_use:'AKTIF', calling:'📳 PANGGIL', charging:'⚡ CHARGE' };
+            el.querySelector('.pager-status-text').textContent = statusMap[p.status] || p.status;
+        });
+
+        const preparing = orders.filter(o => o.status === 'preparing');
+        const ready = orders.filter(o => o.status === 'ready');
+        document.getElementById('statPreparing').textContent = preparing.length;
+        document.getElementById('statReady').textContent = ready.length;
+
+        document.getElementById('lastUpdate').textContent = `Update: ${new Date().toLocaleTimeString('id-ID')}`;
+    } catch(e) { console.log('Refresh error', e); }
+}
+
+// Auto refresh every 5s
+setInterval(refreshData, 5000);
+</script>
+{% endblock %}

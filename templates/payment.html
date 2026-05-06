@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% block title %}Pembayaran - KantinKu{% endblock %}
+
+{% block head %}
+<style>
+.payment-layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; padding: 24px; max-width: 1000px; margin: 0 auto; }
+@media(max-width:768px){ .payment-layout { grid-template-columns: 1fr; } }
+
+.section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+/* ORDER SUMMARY */
+.order-header { padding: 20px; background: linear-gradient(135deg, var(--primary), #FF9A62); color: white; border-radius: 16px 16px 0 0; }
+.order-num { font-size: 22px; font-weight: 800; }
+.order-meta { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+.order-body { padding: 16px; }
+.order-item-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.order-item-row:last-child { border-bottom: none; }
+.order-item-name { font-size: 14px; font-weight: 600; }
+.order-item-qty { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.order-item-price { font-size: 14px; font-weight: 700; color: var(--primary); }
+.order-total { background: var(--bg); padding: 14px 16px; border-radius: 10px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
+.order-total-label { font-size: 14px; font-weight: 600; }
+.order-total-value { font-size: 22px; font-weight: 800; color: var(--primary); }
+
+/* PAYMENT METHODS */
+.payment-card { border: 2px solid var(--border); border-radius: 16px; overflow: hidden; }
+.payment-option { display: flex; align-items: center; gap: 14px; padding: 16px; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid var(--border); }
+.payment-option:last-child { border-bottom: none; }
+.payment-option:hover { background: var(--bg); }
+.payment-option.selected { background: #FFF5F0; border-left: 4px solid var(--primary); }
+.payment-icon { font-size: 28px; width: 48px; height: 48px; background: var(--bg); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.payment-name { font-size: 15px; font-weight: 700; }
+.payment-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.payment-radio { margin-left: auto; width: 20px; height: 20px; accent-color: var(--primary); }
+
+/* PAGER INFO */
+.pager-info-card { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; border-radius: 16px; padding: 20px; }
+.pager-device { text-align: center; padding: 20px; }
+.pager-screen { background: #0a0a1a; border-radius: 12px; padding: 20px; margin: 12px 0; border: 2px solid #333; font-family: 'Space Grotesk', monospace; }
+.pager-number-display { font-size: 56px; font-weight: 700; color: #00FF88; text-shadow: 0 0 20px rgba(0,255,136,0.5); letter-spacing: 4px; }
+.pager-blink { animation: blink 1s infinite; }
+@keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0.3; } }
+.pager-label { font-size: 11px; color: #666; letter-spacing: 2px; margin-top: 6px; }
+
+/* SUCCESS STATE */
+.success-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; }
+.success-overlay.show { display: flex; }
+.success-modal { background: white; border-radius: 24px; padding: 40px; text-align: center; max-width: 400px; width: 90%; animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1); }
+@keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.success-icon { font-size: 72px; display: block; margin-bottom: 16px; }
+.success-title { font-size: 24px; font-weight: 800; color: var(--success); }
+.pager-assign { background: var(--bg); border-radius: 16px; padding: 20px; margin: 16px 0; }
+.pager-assign-num { font-size: 48px; font-weight: 800; color: var(--primary); }
+.pager-assign-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="payment-layout">
+    <!-- Left: Order Summary -->
+    <div>
+        <div class="section-title">📋 Ringkasan Pesanan</div>
+        <div class="card">
+            <div class="order-header">
+                <div class="order-num">{{ order.order_number }}</div>
+                <div class="order-meta">👤 {{ order.customer_name }}  |  🪑 Meja {{ order.table_number or '-' }}</div>
+                {% if order.notes %}
+                <div class="order-meta" style="margin-top:4px;">📝 {{ order.notes }}</div>
+                {% endif %}
+            </div>
+            <div class="order-body">
+                {% for item in order_items %}
+                <div class="order-item-row">
+                    <div>
+                        <div class="order-item-name">{{ item.menu_item.image_emoji }} {{ item.menu_item.name }}</div>
+                        <div class="order-item-qty">{{ item.quantity }}× @ Rp {{ "{:,.0f}".format(item.unit_price) }}</div>
+                    </div>
+                    <div class="order-item-price">Rp {{ "{:,.0f}".format(item.subtotal) }}</div>
+                </div>
+                {% endfor %}
+                <div class="order-total">
+                    <span class="order-total-label">Total Pembayaran</span>
+                    <span class="order-total-value">Rp {{ "{:,.0f}".format(order.total_amount) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pager Info -->
+        <div class="mt-2">
+            <div class="section-title">📟 Sistem Pager</div>
+            <div class="pager-info-card">
+                <div style="font-size:13px;opacity:0.7;margin-bottom:12px;">Setelah membayar, Anda akan mendapat nomor pager. Tunggu sampai pager bergetar pertanda pesanan siap!</div>
+                <div class="pager-device">
+                    <div class="pager-screen">
+                        <div class="pager-number-display pager-blink" id="waitingNum">- -</div>
+                        <div class="pager-label">MENUNGGU PEMBAYARAN</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Payment Method -->
+    <div>
+        <div class="section-title">💳 Pilih Pembayaran</div>
+        <div class="payment-card card">
+            <div class="payment-option selected" onclick="selectPayment('cash', this)">
+                <div class="payment-icon">💵</div>
+                <div>
+                    <div class="payment-name">Tunai</div>
+                    <div class="payment-desc">Bayar di kasir</div>
+                </div>
+                <input type="radio" class="payment-radio" checked>
+            </div>
+            <div class="payment-option" onclick="selectPayment('qris', this)">
+                <div class="payment-icon">📱</div>
+                <div>
+                    <div class="payment-name">QRIS</div>
+                    <div class="payment-desc">Scan QR semua e-wallet</div>
+                </div>
+                <input type="radio" class="payment-radio">
+            </div>
+            <div class="payment-option" onclick="selectPayment('transfer', this)">
+                <div class="payment-icon">🏦</div>
+                <div>
+                    <div class="payment-name">Transfer Bank</div>
+                    <div class="payment-desc">BRI, BCA, Mandiri, BNI</div>
+                </div>
+                <input type="radio" class="payment-radio">
+            </div>
+            <div class="payment-option" onclick="selectPayment('gopay', this)">
+                <div class="payment-icon">💚</div>
+                <div>
+                    <div class="payment-name">GoPay</div>
+                    <div class="payment-desc">Bayar via aplikasi Gojek</div>
+                </div>
+                <input type="radio" class="payment-radio">
+            </div>
+            <div class="payment-option" onclick="selectPayment('ovo', this)">
+                <div class="payment-icon">💜</div>
+                <div>
+                    <div class="payment-name">OVO</div>
+                    <div class="payment-desc">Bayar via aplikasi OVO</div>
+                </div>
+                <input type="radio" class="payment-radio">
+            </div>
+        </div>
+
+        <!-- QRIS Display -->
+        <div id="qrisBox" style="display:none;" class="card mt-2" style="padding:20px;text-align:center;">
+            <div style="padding:20px;text-align:center;">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:8px;">SCAN UNTUK BAYAR</div>
+                <div style="font-size:80px;">📷</div>
+                <div style="font-weight:800;font-size:18px;color:var(--primary);">Rp {{ "{:,.0f}".format(order.total_amount) }}</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:6px;">{{ order.order_number }}</div>
+            </div>
+        </div>
+
+        <div class="card mt-2" style="padding:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="color:var(--muted);font-size:14px;">Total</span>
+                <span style="font-size:20px;font-weight:800;color:var(--primary);">Rp {{ "{:,.0f}".format(order.total_amount) }}</span>
+            </div>
+            <button class="btn btn-success w-full" style="font-size:16px;padding:16px;" onclick="processPayment()">
+                ✅ Konfirmasi Pembayaran
+            </button>
+            <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;">Klik untuk konfirmasi & dapatkan nomor pager</div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="success-overlay" id="successOverlay">
+    <div class="success-modal">
+        <span class="success-icon">🎉</span>
+        <div class="success-title">Pembayaran Berhasil!</div>
+        <p style="color:var(--muted);font-size:14px;margin-top:8px;">Pesananmu sedang diproses dapur kami</p>
+        <div class="pager-assign">
+            <div style="font-size:12px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">NOMOR PAGER KAMU</div>
+            <div class="pager-assign-num" id="assignedPager">--</div>
+            <div class="pager-assign-label">📳 Pager akan bergetar saat pesanan siap</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);">Tunjukkan nomor pesanan:</div>
+        <div style="font-size:18px;font-weight:800;margin:8px 0;color:var(--secondary);">{{ order.order_number }}</div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+            <button class="btn btn-outline w-full" onclick="window.location.href='/menu'">Pesan Lagi</button>
+            <button class="btn btn-primary w-full" onclick="window.location.href='/pager'">Lihat Pager</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedMethod = 'cash';
+
+function selectPayment(method, el) {
+    selectedMethod = method;
+    document.querySelectorAll('.payment-option').forEach(o => {
+        o.classList.remove('selected');
+        o.querySelector('.payment-radio').checked = false;
+    });
+    el.classList.add('selected');
+    el.querySelector('.payment-radio').checked = true;
+    document.getElementById('qrisBox').style.display = (method === 'qris') ? 'block' : 'none';
+}
+
+async function processPayment() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '⏳ Memproses...';
+    try {
+        const res = await fetch('/api/pay/{{ order.id }}', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ method: selectedMethod })
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('assignedPager').textContent = data.pager_number || '--';
+            document.getElementById('successOverlay').classList.add('show');
+            // Update pager display
+            document.getElementById('waitingNum').textContent = String(data.pager_number).padStart(2, '0');
+            document.getElementById('waitingNum').classList.remove('pager-blink');
+            document.getElementById('waitingNum').style.color = '#FFD166';
+        } else {
+            showToast('Gagal memproses pembayaran', 'error');
+            btn.disabled = false; btn.textContent = '✅ Konfirmasi Pembayaran';
+        }
+    } catch {
+        showToast('Terjadi kesalahan!', 'error');
+        btn.disabled = false; btn.textContent = '✅ Konfirmasi Pembayaran';
+    }
+}
+</script>
+{% endblock %}

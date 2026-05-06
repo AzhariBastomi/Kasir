@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}Admin - KantinKu{% endblock %}
+
+{% block head %}
+<style>
+.admin-header { background: linear-gradient(135deg, var(--secondary), #1a2a4a); color: white; padding: 24px; }
+.admin-header h1 { font-size: 24px; font-weight: 800; }
+.admin-header p { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; padding: 20px; }
+.stat-card { background: white; border-radius: 14px; padding: 16px; border: 2px solid var(--border); }
+.stat-card-num { font-size: 28px; font-weight: 800; }
+.stat-card-label { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; margin-top: 4px; }
+
+.orders-table-wrap { padding: 0 20px 20px; overflow-x: auto; }
+.orders-table { width: 100%; border-collapse: collapse; background: white; border-radius: 14px; overflow: hidden; border: 2px solid var(--border); }
+.orders-table th { background: var(--secondary); color: white; padding: 12px 14px; text-align: left; font-size: 12px; letter-spacing: 1px; font-weight: 700; }
+.orders-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.orders-table tr:last-child td { border-bottom: none; }
+.orders-table tr:hover td { background: var(--bg); }
+
+.status-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.status-pending { background: #FEF3C7; color: #92400E; }
+.status-preparing { background: #DBEAFE; color: #1E40AF; }
+.status-ready { background: #D1FAE5; color: #065F46; }
+.status-done { background: #F3F4F6; color: #374151; }
+.status-paid { background: #D1FAE5; color: #065F46; }
+.status-unpaid { background: #FEE2E2; color: #991B1B; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>⚙️ Admin Dashboard</h1>
+    <p>Pantau semua aktivitas pesanan kantin</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-num" style="color:var(--primary);">{{ count_today }}</div>
+        <div class="stat-card-label">📋 Pesanan Hari Ini</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-num" style="color:var(--success);">Rp {{ "{:,.0f}".format(total_today) }}</div>
+        <div class="stat-card-label">💰 Pendapatan Hari Ini</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-num" style="color:#FFD166;">{{ orders|selectattr('status','eq','preparing')|list|length }}</div>
+        <div class="stat-card-label">🔥 Sedang Diproses</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-num" style="color:var(--success);">{{ orders|selectattr('status','eq','ready')|list|length }}</div>
+        <div class="stat-card-label">✅ Siap Diambil</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-num">{{ orders|selectattr('payment_status','eq','unpaid')|list|length }}</div>
+        <div class="stat-card-label">⏳ Belum Bayar</div>
+    </div>
+</div>
+
+<div class="orders-table-wrap">
+    <table class="orders-table">
+        <thead>
+            <tr>
+                <th>No. Pesanan</th>
+                <th>Pelanggan</th>
+                <th>Meja</th>
+                <th>Pager</th>
+                <th>Status</th>
+                <th>Pembayaran</th>
+                <th>Total</th>
+                <th>Waktu</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td><strong>{{ order.order_number }}</strong></td>
+                <td>{{ order.customer_name }}</td>
+                <td>{{ order.table_number or '-' }}</td>
+                <td>{% if order.pager_number %}<strong style="color:var(--primary);">📟 {{ order.pager_number }}</strong>{% else %}-{% endif %}</td>
+                <td>
+                    <span class="status-pill status-{{ order.status }}">
+                        {% if order.status == 'pending' %}⏳ Menunggu
+                        {% elif order.status == 'preparing' %}🔥 Diproses
+                        {% elif order.status == 'ready' %}✅ Siap
+                        {% elif order.status == 'done' %}✔️ Selesai
+                        {% else %}{{ order.status }}{% endif %}
+                    </span>
+                </td>
+                <td>
+                    <span class="status-pill status-{{ order.payment_status }}">
+                        {% if order.payment_status == 'paid' %}💳 {{ order.payment_method or 'Lunas' }}
+                        {% else %}❌ Belum{% endif %}
+                    </span>
+                </td>
+                <td><strong>Rp {{ "{:,.0f}".format(order.total_amount) }}</strong></td>
+                <td style="color:var(--muted);">{{ order.created_at.strftime('%H:%M') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;">Belum ada pesanan</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto refresh table every 15 seconds
+setInterval(() => {
+    fetch('/api/orders')
+        .then(r => r.json())
+        .then(data => {
+            console.log('Orders refreshed:', data.length);
+        });
+}, 15000);
+</script>
+{% endblock %}

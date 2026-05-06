@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kantin Digital{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A28;
+            --secondary: #2D3748;
+            --accent: #FFD166;
+            --success: #06D6A0;
+            --danger: #EF476F;
+            --warning: #FFD166;
+            --info: #118AB2;
+            --bg: #FFF8F5;
+            --card: #FFFFFF;
+            --border: #F0E6E0;
+            --text: #1A1A2E;
+            --muted: #8B7D7D;
+            --shadow: 0 4px 24px rgba(255,107,53,0.12);
+            --radius: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        
+        /* NAV */
+        .navbar {
+            background: white;
+            border-bottom: 2px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .nav-brand .logo { font-size: 28px; }
+        .nav-brand .brand-name { font-size: 20px; font-weight: 800; color: var(--primary); letter-spacing: -0.5px; }
+        .nav-brand .brand-sub { font-size: 11px; color: var(--muted); font-weight: 500; }
+        .nav-links { display: flex; gap: 4px; }
+        .nav-links a {
+            text-decoration: none; padding: 8px 16px; border-radius: 10px;
+            font-weight: 600; font-size: 14px; color: var(--muted);
+            transition: all 0.2s;
+        }
+        .nav-links a:hover, .nav-links a.active {
+            background: var(--primary); color: white;
+        }
+
+        /* BUTTONS */
+        .btn {
+            padding: 12px 24px; border: none; border-radius: 12px; cursor: pointer;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px;
+            transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,107,53,0.35); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: var(--text); }
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
+        .btn-sm { padding: 7px 14px; font-size: 12px; border-radius: 8px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+        /* CARDS */
+        .card {
+            background: var(--card); border-radius: var(--radius);
+            box-shadow: var(--shadow); border: 1px solid var(--border);
+        }
+
+        /* BADGE */
+        .badge {
+            padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .badge-warning { background: #FFF3CD; color: #856404; }
+        .badge-success { background: #D1FAE5; color: #065F46; }
+        .badge-danger { background: #FEE2E2; color: #991B1B; }
+        .badge-info { background: #DBEAFE; color: #1E40AF; }
+        .badge-secondary { background: #F3F4F6; color: #374151; }
+
+        /* TOAST */
+        .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--secondary); color: white; padding: 14px 20px;
+            border-radius: 12px; font-size: 14px; font-weight: 600;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            display: flex; align-items: center; gap: 10px;
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* UTILITIES */
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .text-center { text-align: center; }
+        .text-muted { color: var(--muted); }
+        .fw-bold { font-weight: 700; }
+        .mt-1 { margin-top: 8px; } .mt-2 { margin-top: 16px; } .mt-3 { margin-top: 24px; }
+        .mb-1 { margin-bottom: 8px; } .mb-2 { margin-bottom: 16px; } .mb-3 { margin-bottom: 24px; }
+        .gap-1 { gap: 8px; } .gap-2 { gap: 16px; }
+        .flex { display: flex; } .flex-wrap { flex-wrap: wrap; }
+        .align-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .w-full { width: 100%; }
+        hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+        input, select, textarea {
+            width: 100%; padding: 12px 16px; border: 2px solid var(--border);
+            border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px; background: white; color: var(--text);
+            transition: border-color 0.2s; outline: none;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+        label { font-size: 13px; font-weight: 600; color: var(--secondary); margin-bottom: 6px; display: block; }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            .nav-links { display: none; }
+            .container { padding: 16px; }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand">
+            <span class="logo">🍽️</span>
+            <div>
+                <div class="brand-name">KantinKu</div>
+                <div class="brand-sub">Sistem Kantin Digital</div>
+            </div>
+        </a>
+        <div class="nav-links">
+            <a href="/menu" {% if request.endpoint == 'menu' %}class="active"{% endif %}>🛒 Menu</a>
+            <a href="/pager" {% if request.endpoint == 'pager_dashboard' %}class="active"{% endif %}>📟 Pager</a>
+            <a href="/admin" {% if request.endpoint == 'admin' %}class="active"{% endif %}>⚙️ Admin</a>
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        function showToast(msg, type='info') {
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            const icons = {success:'✅', error:'❌', info:'ℹ️', warning:'⚠️'};
+            t.innerHTML = `<span>${icons[type]||'ℹ️'}</span> ${msg}`;
+            document.getElementById('toastContainer').appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+        function formatRupiah(num) {
+            return 'Rp ' + Number(num).toLocaleString('id-ID');
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

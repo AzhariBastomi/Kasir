@@ -1,6 +1,5 @@
-import usb.core
-for dev in usb.core.find(find_all=True):
-    try:
-        print(hex(dev.idVendor), hex(dev.idProduct), dev.product)
-    except Exception as e:
-        print("Error:", e)
+from escpos.printer import Usb
+
+p = Usb(0x0fe6, 0x811e, 0, in_ep=0x81, out_ep=0x01)
+p.text("Tes print dari Raspberry Pi\n")
+p.cut()

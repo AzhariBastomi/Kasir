@@ -2,24 +2,27 @@
 # config.py — Konfigurasi Printer Thermal & MQTT Pager
 # ============================================================
 
-import sys
+import sys, json, os
 
-# ── PORT PRINTER ──
-if sys.platform == 'win32':
-    PRINTER_PORT = 'COM3'          # Ganti sesuai Device Manager
-else:
-    PRINTER_PORT = '/dev/ttyUSB0'  # Ganti sesuai: ls /dev/tty*
+# ── INFO TOKO (dari toko.json) ──
+_toko_path = os.path.join(os.path.dirname(__file__), 'toko.json')
+with open(_toko_path, encoding='utf-8') as _f:
+    _toko = json.load(_f)
 
-PRINTER_BAUDRATE = 9600
+NAMA_TOKO    = _toko['nama_toko']
+ALAMAT_TOKO  = _toko['alamat_toko']
+TELP_TOKO    = _toko['telp_toko']
+FOOTER_STRUK = _toko['footer_struk']
+
+# ── PRINTER USB ──
+PRINTER_VENDOR_ID  = 0x0fe6   # Vendor ID printer (lihat di Device Manager / lsusb)
+PRINTER_PRODUCT_ID = 0x811e   # Product ID printer
+PRINTER_INTERFACE  = 0
+PRINTER_IN_EP      = 0x81
+PRINTER_OUT_EP     = 0x01
 
 # ── MOCK PRINT (True = skip printer, langsung sukses untuk testing) ──
-MOCK_PRINT = True
-
-# ── INFO TOKO ──
-NAMA_TOKO    = 'WARUNG MAKAN BAROKAH'
-ALAMAT_TOKO  = 'Jl. Merdeka No. 10, Jakarta'
-TELP_TOKO    = '0812-3456-7890'
-FOOTER_STRUK = 'Terima kasih, selamat menikmati!'
+MOCK_PRINT = False
 
 # ── MQTT BROKER (Mosquitto lokal) ──
 MQTT_HOST    = 'localhost'   # IP PC yang jalankan Mosquitto

@@ -165,17 +165,23 @@ def checkout():
 
     waktu = pesanan.tanggal.strftime('%d/%m/%Y %H:%M')
 
+    struk_data = {
+        'nomor_pesanan': pesanan.nomor_pesanan,
+        'nama_pelanggan': nama_pelanggan,
+        'nomor_meja': nomor_meja,
+        'catatan': catatan,
+        'items': items_data,
+        'total': total,
+        'waktu': waktu
+    }
+
+    # Cetak langsung ke printer thermal di Raspberry Pi
+    hasil_print = cetak_struk(struk_data)
+
     return jsonify({
         'success': True,
-        'struk': {
-            'nomor_pesanan': pesanan.nomor_pesanan,
-            'nama_pelanggan': nama_pelanggan,
-            'nomor_meja': nomor_meja,
-            'catatan': catatan,
-            'items': items_data,
-            'total': total,
-            'waktu': waktu
-        }
+        'print': hasil_print,
+        'struk': struk_data
     })
 
 

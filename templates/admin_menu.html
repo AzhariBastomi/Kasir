@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kelola Menu — Kasir</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0f0e0d; --surface:#1a1917; --surface2:#252320;
+    --accent:#f5a623; --text:#f0ede8; --muted:#8a8680;
+    --border:#2e2c29; --success:#4caf7d; --danger:#e85555;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; }
+  header {
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:14px 24px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; }
+  .logo span { color:var(--accent); }
+  nav { display:flex; gap:8px; }
+  nav a {
+    color:var(--muted); text-decoration:none; font-size:0.83rem;
+    padding:7px 14px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface2); transition:all .2s;
+  }
+  nav a:hover, nav a.aktif { color:var(--text); border-color:var(--muted); }
+  .container { max-width:900px; margin:0 auto; padding:28px 20px; }
+
+  .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  .page-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1.2rem; }
+  .btn-tambah-menu {
+    background:var(--accent); color:#000; border:none;
+    padding:10px 20px; border-radius:10px; font-family:'Syne',sans-serif;
+    font-weight:700; font-size:0.88rem; cursor:pointer; transition:all .2s;
+  }
+  .btn-tambah-menu:hover { background:#ffb940; }
+
+  /* FILTER */
+  .filter-bar { display:flex; gap:8px; margin-bottom:16px; }
+  .filter-btn {
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--muted); padding:6px 14px; border-radius:20px;
+    cursor:pointer; font-size:0.82rem; font-family:'DM Sans',sans-serif;
+    transition:all .2s;
+  }
+  .filter-btn.active { background:var(--accent); color:#000; border-color:var(--accent); }
+
+  /* TABLE */
+  .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  table { width:100%; border-collapse:collapse; }
+  th {
+    background:var(--surface2); color:var(--muted); font-size:0.72rem;
+    font-family:'Syne',sans-serif; letter-spacing:1px; text-transform:uppercase;
+    padding:10px 14px; text-align:left;
+  }
+  td { padding:11px 14px; font-size:0.85rem; border-top:1px solid var(--border); vertical-align:middle; }
+  tr:hover td { background:var(--surface2); }
+
+  .menu-img-col img { width:52px; height:42px; object-fit:cover; border-radius:7px; background:var(--surface2); }
+  .menu-img-placeholder { width:52px; height:42px; border-radius:7px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:1.3rem; }
+  .menu-nama-col { font-weight:500; }
+  .menu-desc-col { color:var(--muted); font-size:0.78rem; }
+  .harga-col { color:var(--accent); font-weight:600; }
+  .kat-badge {
+    font-size:0.68rem; padding:2px 8px; border-radius:8px;
+    font-family:'Syne',sans-serif; font-weight:600;
+  }
+  .kat-makanan { background:rgba(232,82,26,.15); color:#f57a4a; border:1px solid rgba(232,82,26,.3); }
+  .kat-minuman { background:rgba(76,175,125,.15); color:var(--success); border:1px solid rgba(76,175,125,.3); }
+
+  .toggle-btn {
+    background:none; border:1px solid var(--border); border-radius:6px;
+    padding:4px 10px; font-size:0.75rem; cursor:pointer; font-family:'DM Sans',sans-serif;
+    transition:all .2s;
+  }
+  .toggle-btn.on { color:var(--success); border-color:rgba(76,175,125,.5); }
+  .toggle-btn.off { color:var(--muted); }
+
+  .action-btn {
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); padding:4px 10px; border-radius:6px;
+    font-size:0.75rem; cursor:pointer; font-family:'DM Sans',sans-serif;
+    transition:all .2s; margin-left:4px;
+  }
+  .action-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .action-btn.danger:hover { border-color:var(--danger); color:var(--danger); }
+
+  /* MODAL */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+    z-index:200; align-items:center; justify-content:center;
+  }
+  .modal-overlay.show { display:flex; }
+  .modal {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:18px; padding:28px; max-width:440px; width:90%;
+  }
+  .modal-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:18px; }
+  .form-group { margin-bottom:13px; }
+  .form-group label { font-size:0.78rem; color:var(--muted); display:block; margin-bottom:5px; }
+  .form-group input, .form-group select {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); padding:9px 12px; border-radius:9px;
+    font-family:'DM Sans',sans-serif; font-size:0.88rem; outline:none; transition:border-color .2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color:var(--accent); }
+  .form-group select option { background:var(--surface2); }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+  .btn-save {
+    background:var(--accent); color:#000; border:none;
+    padding:10px 22px; border-radius:9px; font-family:'Syne',sans-serif;
+    font-weight:700; cursor:pointer; font-size:0.9rem;
+  }
+  .btn-cancel {
+    background:var(--surface2); color:var(--text); border:1px solid var(--border);
+    padding:10px 22px; border-radius:9px; font-family:'DM Sans',sans-serif;
+    cursor:pointer; font-size:0.9rem;
+  }
+
+  .notif {
+    position:fixed; bottom:20px; right:20px; background:var(--success);
+    color:#fff; padding:12px 20px; border-radius:10px; font-size:0.85rem;
+    font-family:'Syne',sans-serif; font-weight:600; opacity:0;
+    transition:opacity .3s; pointer-events:none; z-index:999;
+  }
+  .notif.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">KAS<span>IR</span></div>
+  <nav>
+    <a href="/">🛒 Menu</a>
+    <a href="/laporan">📅 Laporan</a>
+    <a href="/admin/menu" class="aktif">🍽️ Kelola Menu</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="top-bar">
+    <div class="page-title">🍽️ Kelola Menu</div>
+    <button class="btn-tambah-menu" onclick="bukaModalTambah()">+ Tambah Menu</button>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="filterMenu('semua',this)">Semua</button>
+    <button class="filter-btn" onclick="filterMenu('Makanan',this)">Makanan</button>
+    <button class="filter-btn" onclick="filterMenu('Minuman',this)">Minuman</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="tabel-menu">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Nama</th>
+          <th>Kategori</th>
+          <th>Harga</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in menu_list %}
+        <tr id="row-{{ item.id }}" data-kategori="{{ item.kategori }}">
+          <td class="menu-img-col">
+            {% if item.gambar %}
+            <img src="{{ item.gambar }}" alt="{{ item.nama }}" onerror="this.style.display='none'">
+            {% else %}
+            <div class="menu-img-placeholder">🍽️</div>
+            {% endif %}
+          </td>
+          <td>
+            <div class="menu-nama-col">{{ item.nama }}</div>
+            <div class="menu-desc-col">{{ item.deskripsi }}</div>
+          </td>
+          <td>
+            <span class="kat-badge kat-{{ item.kategori | lower }}">{{ item.kategori }}</span>
+          </td>
+          <td class="harga-col">Rp {{ "{:,.0f}".format(item.harga) }}</td>
+          <td>
+            <button class="toggle-btn {{ 'on' if item.tersedia else 'off' }}"
+              id="toggle-{{ item.id }}"
+              onclick="toggleMenu({{ item.id }}, this)">
+              {{ '✅ Aktif' if item.tersedia else '⛔ Nonaktif' }}
+            </button>
+          </td>
+          <td>
+            <button class="action-btn" onclick="bukaModalEdit({{ item.id }}, '{{ item.nama }}', '{{ item.deskripsi }}', {{ item.harga }}, '{{ item.kategori }}', '{{ item.gambar }}')">Edit</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL TAMBAH/EDIT -->
+<div class="modal-overlay" id="modal-form">
+  <div class="modal">
+    <div class="modal-title" id="modal-form-title">Tambah Menu</div>
+    <input type="hidden" id="edit-id" value="">
+    <div class="form-group">
+      <label>URL Gambar</label>
+      <input type="text" id="f-gambar" placeholder="https://..." />
+    </div>
+    <div class="form-group">
+      <label>Nama Menu *</label>
+      <input type="text" id="f-nama" placeholder="Nasi Goreng Spesial" />
+    </div>
+    <div class="form-group">
+      <label>Deskripsi</label>
+      <input type="text" id="f-deskripsi" placeholder="Deskripsi singkat..." />
+    </div>
+    <div class="form-group">
+      <label>Harga (Rp) *</label>
+      <input type="number" id="f-harga" placeholder="15000" />
+    </div>
+    <div class="form-group">
+      <label>Kategori *</label>
+      <select id="f-kategori">
+        <option value="Makanan">Makanan</option>
+        <option value="Minuman">Minuman</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="tutupModal()">Batal</button>
+      <button class="btn-save" onclick="simpanMenu()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif">Tersimpan!</div>
+
+<script>
+function filterMenu(kat, el) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('#tabel-menu tbody tr').forEach(row => {
+    if (kat === 'semua' || row.dataset.kategori === kat) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+async function toggleMenu(id, btn) {
+  const res = await fetch(`/api/menu/toggle/${id}`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    if (data.tersedia) {
+      btn.textContent = '✅ Aktif';
+      btn.className = 'toggle-btn on';
+    } else {
+      btn.textContent = '⛔ Nonaktif';
+      btn.className = 'toggle-btn off';
+    }
+    tampilNotif(data.tersedia ? 'Menu diaktifkan' : 'Menu dinonaktifkan');
+  }
+}
+
+function bukaModalTambah() {
+  document.getElementById('modal-form-title').textContent = 'Tambah Menu Baru';
+  document.getElementById('edit-id').value = '';
+  document.getElementById('f-gambar').value = '';
+  document.getElementById('f-nama').value = '';
+  document.getElementById('f-deskripsi').value = '';
+  document.getElementById('f-harga').value = '';
+  document.getElementById('f-kategori').value = 'Makanan';
+  document.getElementById('modal-form').classList.add('show');
+}
+
+function bukaModalEdit(id, nama, deskripsi, harga, kategori, gambar) {
+  document.getElementById('modal-form-title').textContent = 'Edit Menu';
+  document.getElementById('edit-id').value = id;
+  document.getElementById('f-gambar').value = gambar;
+  document.getElementById('f-nama').value = nama;
+  document.getElementById('f-deskripsi').value = deskripsi;
+  document.getElementById('f-harga').value = harga;
+  document.getElementById('f-kategori').value = kategori;
+  document.getElementById('modal-form').classList.add('show');
+}
+
+function tutupModal() {
+  document.getElementById('modal-form').classList.remove('show');
+}
+
+async function simpanMenu() {
+  const id = document.getElementById('edit-id').value;
+  const payload = {
+    nama: document.getElementById('f-nama').value.trim(),
+    deskripsi: document.getElementById('f-deskripsi').value.trim(),
+    harga: document.getElementById('f-harga').value,
+    kategori: document.getElementById('f-kategori').value,
+    gambar: document.getElementById('f-gambar').value.trim()
+  };
+  if (!payload.nama || !payload.harga) {
+    alert('Nama dan harga wajib diisi!');
+    return;
+  }
+  const url = id ? `/api/menu/edit/${id}` : '/api/menu/tambah';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.success) {
+    tutupModal();
+    tampilNotif('Berhasil disimpan! Memuat ulang...');
+    setTimeout(() => location.reload(), 800);
+  }
+}
+
+function tampilNotif(pesan) {
+  const notif = document.getElementById('notif');
+  notif.textContent = pesan;
+  notif.classList.add('show');
+  setTimeout(() => notif.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

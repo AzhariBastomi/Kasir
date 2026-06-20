@@ -1,245 +1,558 @@
-{% extends 'base.html' %}
-{% block title %}Menu - KantinKu{% endblock %}
-
-{% block head %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kasir — Menu</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-.hero { background: linear-gradient(135deg, var(--primary) 0%, #FF9A62 100%); color: white; padding: 32px 24px; text-align: center; }
-.hero h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
-.hero p { font-size: 15px; opacity: 0.9; margin-top: 6px; }
+  :root {
+    --bg: #0f0e0d;
+    --surface: #1a1917;
+    --surface2: #252320;
+    --accent: #f5a623;
+    --accent2: #e8521a;
+    --text: #f0ede8;
+    --muted: #8a8680;
+    --border: #2e2c29;
+    --success: #4caf7d;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; }
 
-.category-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 16px 24px; background: white; border-bottom: 2px solid var(--border); scrollbar-width: none; }
-.category-tabs::-webkit-scrollbar { display: none; }
-.cat-tab { padding: 8px 20px; border-radius: 20px; border: 2px solid var(--border); background: white; cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap; transition: all 0.2s; }
-.cat-tab.active, .cat-tab:hover { background: var(--primary); color: white; border-color: var(--primary); }
+  /* HEADER */
+  header {
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    padding:14px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100;
+  }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; letter-spacing:-0.5px; }
+  .logo span { color:var(--accent); }
+  .header-actions { display:flex; gap:10px; align-items:center; }
+  .btn-admin {
+    background:var(--surface2); color:var(--muted);
+    border:1px solid var(--border); padding:7px 14px;
+    border-radius:8px; font-size:0.82rem; text-decoration:none;
+    font-family:'DM Sans',sans-serif; transition:all .2s;
+  }
+  .btn-admin:hover { color:var(--text); border-color:var(--muted); }
 
-.menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 24px; }
+  /* LAYOUT */
+  .container { max-width:1100px; margin:0 auto; padding:24px 20px; }
+  .page-grid { display:grid; grid-template-columns:1fr 340px; gap:28px; align-items:start; }
 
-.menu-card {
-    background: white; border-radius: 16px; overflow: hidden;
-    border: 2px solid var(--border); transition: all 0.25s; cursor: pointer;
-    position: relative;
-}
-.menu-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(255,107,53,0.2); border-color: var(--primary); }
-.menu-card.selected { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,107,53,0.2); }
-.menu-emoji { font-size: 60px; text-align: center; padding: 20px; background: var(--bg); display: block; }
-.menu-info { padding: 14px 16px; }
-.menu-name { font-size: 15px; font-weight: 700; color: var(--text); }
-.menu-desc { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
-.menu-price { font-size: 17px; font-weight: 800; color: var(--primary); margin-top: 8px; }
-.menu-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); }
-.qty-control { display: flex; align-items: center; gap: 10px; }
-.qty-btn { width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-.qty-btn.minus { background: #FEE2E2; color: var(--danger); }
-.qty-btn.plus { background: var(--primary); color: white; }
-.qty-btn:hover { filter: brightness(0.9); transform: scale(1.1); }
-.qty-num { font-weight: 800; font-size: 16px; min-width: 24px; text-align: center; }
+  /* FILTER KATEGORI */
+  .filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  .filter-btn {
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--muted); padding:7px 16px; border-radius:20px;
+    cursor:pointer; font-size:0.84rem; font-family:'DM Sans',sans-serif;
+    transition:all .2s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    background:var(--accent); color:#000; border-color:var(--accent); font-weight:500;
+  }
 
-/* CART SIDEBAR */
-.cart-sidebar {
-    position: fixed; right: 0; top: 64px; bottom: 0; width: 340px;
-    background: white; border-left: 2px solid var(--border);
-    display: flex; flex-direction: column; z-index: 90;
-    transform: translateX(100%); transition: transform 0.3s ease;
-    box-shadow: -8px 0 32px rgba(0,0,0,0.1);
-}
-.cart-sidebar.open { transform: translateX(0); }
-.cart-header { padding: 20px; border-bottom: 2px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.cart-header h3 { font-size: 18px; font-weight: 800; }
-.cart-items { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.cart-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--bg); border-radius: 10px; }
-.cart-item-emoji { font-size: 24px; }
-.cart-item-info { flex: 1; }
-.cart-item-name { font-size: 13px; font-weight: 700; }
-.cart-item-price { font-size: 12px; color: var(--muted); }
-.cart-item-sub { font-size: 13px; font-weight: 700; color: var(--primary); }
-.cart-footer { padding: 16px; border-top: 2px solid var(--border); }
-.cart-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.cart-total-label { font-size: 14px; color: var(--muted); }
-.cart-total-amount { font-size: 20px; font-weight: 800; color: var(--primary); }
-.cart-empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+  /* SECTION TITLE */
+  .section-label {
+    font-family:'Syne',sans-serif; font-weight:700; font-size:0.75rem;
+    letter-spacing:2px; text-transform:uppercase; color:var(--muted);
+    margin-bottom:14px; margin-top:8px;
+  }
 
-.cart-fab {
-    position: fixed; bottom: 24px; right: 24px; z-index: 200;
-    background: var(--primary); color: white; border: none; border-radius: 50%;
-    width: 60px; height: 60px; font-size: 24px; cursor: pointer;
-    box-shadow: 0 8px 24px rgba(255,107,53,0.4); transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center;
-}
-.cart-fab:hover { transform: scale(1.1); }
-.cart-badge { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  /* MENU GRID */
+  .menu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
 
-/* CHECKOUT MODAL */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; display: none; align-items: center; justify-content: center; }
-.modal-overlay.open { display: flex; }
-.modal { background: white; border-radius: 20px; padding: 28px; width: 90%; max-width: 420px; }
-.modal h3 { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
-.form-group { margin-bottom: 16px; }
+  .menu-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:16px; cursor:pointer;
+    transition:all .2s; position:relative; overflow:hidden;
+  }
+  .menu-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .menu-card.added { border-color:var(--success); }
+  .menu-img {
+    width:100%; height:120px; object-fit:cover;
+    border-radius:8px; margin-bottom:10px; display:block;
+    background:var(--surface2);
+  }
+  .menu-img-fallback {
+    width:100%; height:120px; border-radius:8px; margin-bottom:10px;
+    background:var(--surface2); display:flex; align-items:center;
+    justify-content:center; font-size:2.5rem;
+  }
+  .menu-nama { font-family:'Syne',sans-serif; font-weight:700; font-size:0.95rem; margin-bottom:4px; }
+  .menu-desc { font-size:0.78rem; color:var(--muted); margin-bottom:10px; line-height:1.4; }
+  .menu-footer { display:flex; align-items:center; justify-content:space-between; }
+  .menu-harga { font-weight:500; color:var(--accent); font-size:0.95rem; }
+  .btn-tambah {
+    background:var(--accent); color:#000; border:none;
+    width:28px; height:28px; border-radius:8px; font-size:1.1rem;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-weight:700; transition:all .15s;
+  }
+  .btn-tambah:hover { background:#ffb940; transform:scale(1.1); }
+  .badge-kategori {
+    position:absolute; top:10px; right:10px;
+    background:var(--surface2); border:1px solid var(--border);
+    font-size:0.65rem; padding:2px 7px; border-radius:10px; color:var(--muted);
+    font-family:'Syne',sans-serif; letter-spacing:0.5px;
+  }
+
+  /* KERANJANG */
+  .keranjang {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:20px; position:sticky; top:80px;
+  }
+  .keranjang-title {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:1.1rem;
+    margin-bottom:16px; display:flex; align-items:center; gap:8px;
+  }
+  .keranjang-title .count-badge {
+    background:var(--accent); color:#000; width:22px; height:22px;
+    border-radius:50%; font-size:0.75rem; display:flex;
+    align-items:center; justify-content:center; font-weight:700;
+  }
+
+  /* FORM PELANGGAN */
+  .form-group { margin-bottom:12px; }
+  .form-group label { font-size:0.78rem; color:var(--muted); display:block; margin-bottom:5px; }
+  .form-group input, .form-group textarea {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); padding:9px 12px; border-radius:9px;
+    font-family:'DM Sans',sans-serif; font-size:0.88rem;
+    transition:border-color .2s; outline:none;
+  }
+  .form-group input:focus, .form-group textarea:focus { border-color:var(--accent); }
+  .form-group textarea { resize:none; height:56px; }
+
+  /* ITEM KERANJANG */
+  .keranjang-list { min-height:60px; margin-bottom:14px; }
+  .keranjang-item {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 0; border-bottom:1px solid var(--border); font-size:0.85rem;
+  }
+  .keranjang-item:last-child { border-bottom:none; }
+  .ki-nama { flex:1; font-weight:500; }
+  .ki-qty-ctrl { display:flex; align-items:center; gap:5px; }
+  .ki-qty-btn {
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); width:22px; height:22px; border-radius:6px;
+    cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center;
+    transition:background .15s;
+  }
+  .ki-qty-btn:hover { background:var(--border); }
+  .ki-qty { min-width:18px; text-align:center; font-weight:600; }
+  .ki-subtotal { color:var(--accent); font-weight:500; min-width:60px; text-align:right; font-size:0.82rem; }
+
+  .keranjang-empty { text-align:center; color:var(--muted); padding:20px 0; font-size:0.85rem; }
+
+  /* TOTAL */
+  .total-box {
+    background:var(--surface2); border-radius:10px; padding:12px 14px;
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px; border:1px solid var(--border);
+  }
+  .total-label { font-size:0.82rem; color:var(--muted); }
+  .total-nilai { font-family:'Syne',sans-serif; font-weight:800; font-size:1.2rem; color:var(--accent); }
+
+  .btn-pesan {
+    width:100%; background:var(--accent); color:#000;
+    border:none; padding:14px; border-radius:12px;
+    font-family:'Syne',sans-serif; font-weight:700; font-size:0.95rem;
+    cursor:pointer; letter-spacing:0.3px; transition:all .2s;
+  }
+  .btn-pesan:hover:not(:disabled) { background:#ffb940; transform:translateY(-1px); }
+  .btn-pesan:disabled { background:var(--surface2); color:var(--muted); cursor:not-allowed; }
+
+  /* PRINT MODAL */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+    z-index:200; align-items:center; justify-content:center;
+  }
+  .modal-overlay.show { display:flex; }
+  .modal {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:18px; padding:28px; max-width:400px; width:90%;
+    text-align:center;
+  }
+  .modal-icon { font-size:2.5rem; margin-bottom:12px; }
+  .modal-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1.15rem; margin-bottom:6px; }
+  .modal-sub { color:var(--muted); font-size:0.85rem; margin-bottom:20px; }
+  .modal-actions { display:flex; gap:10px; justify-content:center; }
+  .btn-print {
+    background:var(--accent); color:#000; border:none;
+    padding:11px 24px; border-radius:10px;
+    font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem;
+    cursor:pointer; transition:all .2s;
+  }
+  .btn-print:hover { background:#ffb940; }
+  .btn-batal {
+    background:var(--surface2); color:var(--text); border:1px solid var(--border);
+    padding:11px 24px; border-radius:10px;
+    font-family:'DM Sans',sans-serif; font-size:0.9rem;
+    cursor:pointer; transition:all .2s;
+  }
+  .btn-batal:hover { border-color:var(--muted); }
+
+  /* STRUK TERMAL (print only) */
+  #struk-print { display:none; }
+
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  @media print {
+    body > * { display:none !important; }
+    #struk-print {
+      display:block !important;
+      font-family:'Courier New', monospace;
+      font-size:12px;
+      width:80mm;
+      margin:0;
+      padding:4mm;
+      color:#000;
+      background:#fff;
+    }
+    .struk-nama-toko {
+      text-align:center; font-weight:bold; font-size:14px;
+      border-bottom:1px dashed #000; padding-bottom:6px; margin-bottom:6px;
+    }
+    .struk-info { margin-bottom:6px; }
+    .struk-info div { display:flex; justify-content:space-between; }
+    .struk-divider { border-top:1px dashed #000; margin:6px 0; }
+    .struk-item { display:flex; justify-content:space-between; margin-bottom:3px; }
+    .struk-item-nama { flex:1; }
+    .struk-item-qty { width:30px; text-align:center; }
+    .struk-item-harga { width:70px; text-align:right; }
+    .struk-total {
+      display:flex; justify-content:space-between;
+      font-weight:bold; font-size:13px; margin-top:4px;
+    }
+    .struk-footer { text-align:center; margin-top:8px; font-size:11px; }
+    .struk-catatan { font-style:italic; margin-top:4px; }
+  }
+
+  @media (max-width:700px) {
+    .page-grid { grid-template-columns:1fr; }
+    .keranjang { position:static; }
+  }
 </style>
-{% endblock %}
+</head>
+<body>
 
-{% block content %}
-<div class="hero">
-    <h1>🍽️ Menu Hari Ini</h1>
-    <p>Pilih makanan & minuman favoritmu!</p>
-</div>
+<header>
+  <div class="logo">KAS<span>IR</span></div>
+  <div class="header-actions">
+    <a href="/laporan" class="btn-admin">📅 Laporan</a>
+    <a href="/admin/menu" class="btn-admin">🍽️ Kelola Menu</a>
+  </div>
+</header>
 
-<div class="category-tabs">
-    <button class="cat-tab active" onclick="filterCategory('all')">Semua</button>
-    {% for cat in categories %}
-    <button class="cat-tab" onclick="filterCategory('{{ cat }}')">{{ cat }}</button>
-    {% endfor %}
-</div>
+<div class="container">
+  <div class="page-grid">
 
-<div style="padding-right: 0;" id="menuWrapper">
-    <div class="menu-grid" id="menuGrid">
-        {% for item in menu_items %}
-        <div class="menu-card" data-id="{{ item.id }}" data-category="{{ item.category }}"
-             data-name="{{ item.name }}" data-price="{{ item.price }}" data-emoji="{{ item.image_emoji }}">
-            <span class="menu-emoji">{{ item.image_emoji }}</span>
-            <div class="menu-info">
-                <div class="menu-name">{{ item.name }}</div>
-                <div class="menu-desc">{{ item.description }}</div>
-                <div class="menu-price">Rp {{ "{:,.0f}".format(item.price) }}</div>
-            </div>
-            <div class="menu-footer">
-                <span class="badge badge-secondary">{{ item.category }}</span>
-                <div class="qty-control">
-                    <button class="qty-btn minus" onclick="changeQty(event, {{ item.id }}, -1)">−</button>
-                    <span class="qty-num" id="qty-{{ item.id }}">0</span>
-                    <button class="qty-btn plus" onclick="changeQty(event, {{ item.id }}, 1)">+</button>
-                </div>
-            </div>
-        </div>
+    <!-- KIRI: MENU -->
+    <div>
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterKategori('semua', this)">Semua</button>
+        {% for k in kategori_list %}
+        <button class="filter-btn" onclick="filterKategori('{{ k }}', this)">{{ k }}</button>
         {% endfor %}
+      </div>
+
+      <div class="section-label">Makanan</div>
+      <div class="menu-grid" id="grid-makanan">
+        {% for item in menu_items %}
+        {% if item.kategori == 'Makanan' %}
+        <div class="menu-card" data-id="{{ item.id }}" data-nama="{{ item.nama }}" data-harga="{{ item.harga }}" data-kategori="{{ item.kategori }}" onclick="tambahKeKeranjang({{ item.id }}, '{{ item.nama }}', {{ item.harga }}, '{{ item.kategori }}')">
+          <span class="badge-kategori">{{ item.kategori }}</span>
+          {% if item.gambar %}
+          <img class="menu-img" src="{{ item.gambar }}" alt="{{ item.nama }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="menu-img-fallback" style="display:none">🍽️</div>
+          {% else %}
+          <div class="menu-img-fallback">🍽️</div>
+          {% endif %}
+          <div class="menu-nama">{{ item.nama }}</div>
+          <div class="menu-desc">{{ item.deskripsi }}</div>
+          <div class="menu-footer">
+            <span class="menu-harga">Rp {{ "{:,.0f}".format(item.harga) }}</span>
+            <button class="btn-tambah">+</button>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="section-label" style="margin-top:24px;">Minuman</div>
+      <div class="menu-grid" id="grid-minuman">
+        {% for item in menu_items %}
+        {% if item.kategori == 'Minuman' %}
+        <div class="menu-card" data-id="{{ item.id }}" data-nama="{{ item.nama }}" data-harga="{{ item.harga }}" data-kategori="{{ item.kategori }}" onclick="tambahKeKeranjang({{ item.id }}, '{{ item.nama }}', {{ item.harga }}, '{{ item.kategori }}')">
+          <span class="badge-kategori">{{ item.kategori }}</span>
+          {% if item.gambar %}
+          <img class="menu-img" src="{{ item.gambar }}" alt="{{ item.nama }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="menu-img-fallback" style="display:none">🥤</div>
+          {% else %}
+          <div class="menu-img-fallback">🥤</div>
+          {% endif %}
+          <div class="menu-nama">{{ item.nama }}</div>
+          <div class="menu-desc">{{ item.deskripsi }}</div>
+          <div class="menu-footer">
+            <span class="menu-harga">Rp {{ "{:,.0f}".format(item.harga) }}</span>
+            <button class="btn-tambah">+</button>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
     </div>
+
+    <!-- KANAN: KERANJANG -->
+    <div class="keranjang">
+      <div class="keranjang-title">
+        🛒 Pesanan
+        <span class="count-badge" id="count-badge">0</span>
+      </div>
+
+      <div class="form-group">
+        <label>Nama Pelanggan</label>
+        <input type="text" id="nama-pelanggan" placeholder="Contoh: Budi" />
+      </div>
+      <div class="form-group">
+        <label>Nomor Meja</label>
+        <input type="text" id="nomor-meja" placeholder="Contoh: 5" />
+      </div>
+      <div class="form-group">
+        <label>Catatan (opsional)</label>
+        <textarea id="catatan" placeholder="Tidak pedas, tanpa bawang..."></textarea>
+      </div>
+
+      <div class="keranjang-list" id="keranjang-list">
+        <div class="keranjang-empty" id="empty-msg">Belum ada pesanan</div>
+      </div>
+
+      <div class="total-box">
+        <span class="total-label">Total</span>
+        <span class="total-nilai" id="total-display">Rp 0</span>
+      </div>
+
+      <button class="btn-pesan" id="btn-pesan" disabled onclick="prosesCheckout()">
+        🖨️ Cetak Struk
+      </button>
+    </div>
+
+  </div>
 </div>
 
-<!-- Cart FAB -->
-<button class="cart-fab" onclick="toggleCart()" id="cartFab" style="display:none">
-    🛒
-    <span class="cart-badge" id="cartBadge">0</span>
-</button>
-
-<!-- Cart Sidebar -->
-<div class="cart-sidebar" id="cartSidebar">
-    <div class="cart-header">
-        <h3>🛒 Pesananku</h3>
-        <button class="btn btn-sm btn-outline" onclick="toggleCart()">✕ Tutup</button>
+<!-- MODAL SUKSES -->
+<div class="modal-overlay" id="modal-sukses">
+  <div class="modal">
+    <div class="modal-icon">✅</div>
+    <div class="modal-title">Pesanan Tercatat!</div>
+    <div class="modal-sub" id="modal-info">Nomor: —</div>
+    <div class="modal-actions">
+      <button class="btn-print" onclick="cetakStruk()">🖨️ Print Struk</button>
+      <button class="btn-batal" onclick="tutupModal()">Pesanan Baru</button>
     </div>
-    <div class="cart-items" id="cartItems">
-        <div class="cart-empty">🛒<br>Belum ada pesanan</div>
-    </div>
-    <div class="cart-footer">
-        <div class="cart-total">
-            <span class="cart-total-label">Total Pembayaran</span>
-            <span class="cart-total-amount" id="cartTotal">Rp 0</span>
-        </div>
-        <button class="btn btn-primary w-full" onclick="openCheckout()">Pesan Sekarang 🚀</button>
-    </div>
+  </div>
 </div>
 
-<!-- Checkout Modal -->
-<div class="modal-overlay" id="checkoutModal">
-    <div class="modal">
-        <h3>📋 Detail Pesanan</h3>
-        <div class="form-group">
-            <label>Nama Pemesan *</label>
-            <input type="text" id="customerName" placeholder="Masukkan nama kamu">
-        </div>
-        <div class="form-group">
-            <label>Nomor Meja</label>
-            <input type="text" id="tableNumber" placeholder="Contoh: 5, A3">
-        </div>
-        <div class="form-group">
-            <label>Catatan (Opsional)</label>
-            <textarea id="orderNotes" placeholder="Contoh: tidak pakai pedas" style="height:70px;resize:none;"></textarea>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:8px;">
-            <button class="btn btn-outline w-full" onclick="closeCheckout()">Batal</button>
-            <button class="btn btn-primary w-full" onclick="submitOrder()">Lanjut Bayar 💳</button>
-        </div>
-    </div>
+<!-- STRUK TERMAL -->
+<div id="struk-print">
+  <div class="struk-nama-toko">
+    *** KANTIN KASIR ***<br>
+    Jl. Contoh No. 1, Jakarta<br>
+    Telp: 021-000000
+  </div>
+  <div class="struk-info">
+    <div><span>No</span><span id="s-nomor">-</span></div>
+    <div><span>Tgl</span><span id="s-tanggal">-</span></div>
+    <div><span>Meja</span><span id="s-meja">-</span></div>
+    <div><span>Pelanggan</span><span id="s-pelanggan">-</span></div>
+  </div>
+  <div class="struk-divider"></div>
+  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:11px;margin-bottom:3px;">
+    <span>Item</span><span>Qty</span><span>Harga</span>
+  </div>
+  <div id="s-items"></div>
+  <div class="struk-divider"></div>
+  <div class="struk-total">
+    <span>TOTAL</span>
+    <span id="s-total">Rp 0</span>
+  </div>
+  <div class="struk-divider"></div>
+  <div id="s-catatan-wrap" style="display:none;">
+    <div class="struk-catatan" id="s-catatan"></div>
+    <div class="struk-divider"></div>
+  </div>
+  <div class="struk-footer">
+    Terima kasih atas kunjungan Anda!<br>
+    Selamat menikmati 😊
+  </div>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
 <script>
-let cart = {};
-let menuData = {};
+let keranjang = {}; // {id: {nama, harga, qty, kategori}}
+let strukcache = null;
 
-// Build menu data map
-document.querySelectorAll('.menu-card').forEach(card => {
-    const id = card.dataset.id;
-    menuData[id] = { id, name: card.dataset.name, price: parseFloat(card.dataset.price), emoji: card.dataset.emoji };
-});
-
-function changeQty(e, id, delta) {
-    e.stopPropagation();
-    cart[id] = (cart[id] || 0) + delta;
-    if (cart[id] <= 0) delete cart[id];
-    document.getElementById(`qty-${id}`).textContent = cart[id] || 0;
-    const card = document.querySelector(`[data-id="${id}"]`);
-    cart[id] ? card.classList.add('selected') : card.classList.remove('selected');
-    updateCart();
+function tambahKeKeranjang(id, nama, harga, kategori) {
+  if (keranjang[id]) {
+    keranjang[id].qty++;
+  } else {
+    keranjang[id] = { nama, harga, qty: 1, kategori };
+  }
+  renderKeranjang();
 }
 
-function updateCart() {
-    const total = Object.entries(cart).reduce((s, [id, q]) => s + menuData[id].price * q, 0);
-    const count = Object.values(cart).reduce((s, q) => s + q, 0);
-    document.getElementById('cartBadge').textContent = count;
-    document.getElementById('cartTotal').textContent = formatRupiah(total);
-    document.getElementById('cartFab').style.display = count > 0 ? 'flex' : 'none';
-
-    const itemsEl = document.getElementById('cartItems');
-    if (!count) { itemsEl.innerHTML = '<div class="cart-empty">🛒<br>Belum ada pesanan</div>'; return; }
-    itemsEl.innerHTML = Object.entries(cart).map(([id, q]) => {
-        const m = menuData[id];
-        return `<div class="cart-item">
-            <span class="cart-item-emoji">${m.emoji}</span>
-            <div class="cart-item-info">
-                <div class="cart-item-name">${m.name}</div>
-                <div class="cart-item-price">${formatRupiah(m.price)} × ${q}</div>
-            </div>
-            <span class="cart-item-sub">${formatRupiah(m.price * q)}</span>
-        </div>`;
-    }).join('');
+function ubahQty(id, delta) {
+  if (!keranjang[id]) return;
+  keranjang[id].qty += delta;
+  if (keranjang[id].qty <= 0) delete keranjang[id];
+  renderKeranjang();
 }
 
-function toggleCart() {
-    document.getElementById('cartSidebar').classList.toggle('open');
+function renderKeranjang() {
+  const list = document.getElementById('keranjang-list');
+  const emptyMsg = document.getElementById('empty-msg');
+  const badge = document.getElementById('count-badge');
+  const totalDisplay = document.getElementById('total-display');
+  const btnPesan = document.getElementById('btn-pesan');
+
+  const ids = Object.keys(keranjang);
+  let total = 0, totalQty = 0;
+
+  if (ids.length === 0) {
+    list.innerHTML = '<div class="keranjang-empty" id="empty-msg">Belum ada pesanan</div>';
+    badge.textContent = '0';
+    totalDisplay.textContent = 'Rp 0';
+    btnPesan.disabled = true;
+    return;
+  }
+
+  let html = '';
+  ids.forEach(id => {
+    const item = keranjang[id];
+    const sub = item.harga * item.qty;
+    total += sub;
+    totalQty += item.qty;
+    html += `
+      <div class="keranjang-item">
+        <div class="ki-nama">${item.nama}</div>
+        <div class="ki-qty-ctrl">
+          <button class="ki-qty-btn" onclick="ubahQty(${id}, -1)">−</button>
+          <span class="ki-qty">${item.qty}</span>
+          <button class="ki-qty-btn" onclick="ubahQty(${id}, 1)">+</button>
+        </div>
+        <div class="ki-subtotal">Rp ${formatRp(sub)}</div>
+      </div>`;
+  });
+
+  list.innerHTML = html;
+  badge.textContent = totalQty;
+  totalDisplay.textContent = 'Rp ' + formatRp(total);
+  btnPesan.disabled = false;
 }
 
-function filterCategory(cat) {
-    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
-    document.querySelectorAll('.menu-card').forEach(c => {
-        c.style.display = (cat === 'all' || c.dataset.category === cat) ? '' : 'none';
+function formatRp(n) {
+  return n.toLocaleString('id-ID');
+}
+
+function filterKategori(k, el) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+
+  document.querySelectorAll('.menu-card').forEach(card => {
+    if (k === 'semua' || card.dataset.kategori === k) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+
+  document.querySelectorAll('.section-label').forEach(label => {
+    label.style.display = k === 'semua' ? '' : 'none';
+  });
+}
+
+async function prosesCheckout() {
+  const nama = document.getElementById('nama-pelanggan').value.trim() || 'Pelanggan';
+  const meja = document.getElementById('nomor-meja').value.trim() || '-';
+  const catatan = document.getElementById('catatan').value.trim();
+
+  const cart = Object.entries(keranjang).map(([id, item]) => ({
+    id: parseInt(id), qty: item.qty
+  }));
+
+  const btn = document.getElementById('btn-pesan');
+  btn.disabled = true;
+  btn.textContent = 'Memproses...';
+
+  try {
+    const res = await fetch('/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cart, nama_pelanggan: nama, nomor_meja: meja, catatan })
     });
+    const data = await res.json();
+
+    if (data.success) {
+      strukcache = data.struk;
+      isiStruk(data.struk);
+      document.getElementById('modal-info').textContent = 'No: ' + data.struk.nomor_pesanan + ' — ' + data.struk.waktu;
+      document.getElementById('modal-sukses').classList.add('show');
+    } else {
+      alert('Gagal: ' + data.message);
+    }
+  } catch(e) {
+    alert('Error koneksi ke server');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🖨️ Cetak Struk';
+  }
 }
 
-function openCheckout() {
-    if (!Object.keys(cart).length) { showToast('Tambahkan menu dulu!', 'warning'); return; }
-    document.getElementById('checkoutModal').classList.add('open');
-}
-function closeCheckout() { document.getElementById('checkoutModal').classList.remove('open'); }
+function isiStruk(s) {
+  document.getElementById('s-nomor').textContent = s.nomor_pesanan;
+  document.getElementById('s-tanggal').textContent = s.waktu;
+  document.getElementById('s-meja').textContent = s.nomor_meja;
+  document.getElementById('s-pelanggan').textContent = s.nama_pelanggan;
+  document.getElementById('s-total').textContent = 'Rp ' + formatRp(s.total);
 
-async function submitOrder() {
-    const name = document.getElementById('customerName').value.trim();
-    if (!name) { showToast('Nama harus diisi!', 'error'); return; }
-    const payload = {
-        cart: Object.entries(cart).map(([id, qty]) => ({ id: parseInt(id), qty })),
-        customer_name: name,
-        table_number: document.getElementById('tableNumber').value,
-        notes: document.getElementById('orderNotes').value
-    };
-    try {
-        const res = await fetch('/checkout', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        const data = await res.json();
-        if (data.success) {
-            window.location.href = `/payment/${data.order_id}`;
-        } else { showToast(data.message, 'error'); }
-    } catch { showToast('Gagal membuat pesanan!', 'error'); }
+  let itemsHtml = '';
+  s.items.forEach(item => {
+    itemsHtml += `
+      <div class="struk-item">
+        <span class="struk-item-nama">${item.nama}</span>
+        <span class="struk-item-qty">x${item.jumlah}</span>
+        <span class="struk-item-harga">Rp${formatRp(item.subtotal)}</span>
+      </div>`;
+  });
+  document.getElementById('s-items').innerHTML = itemsHtml;
+
+  if (s.catatan) {
+    document.getElementById('s-catatan').textContent = '📝 ' + s.catatan;
+    document.getElementById('s-catatan-wrap').style.display = 'block';
+  } else {
+    document.getElementById('s-catatan-wrap').style.display = 'none';
+  }
+}
+
+function cetakStruk() {
+  window.print();
+}
+
+function tutupModal() {
+  document.getElementById('modal-sukses').classList.remove('show');
+  keranjang = {};
+  strukcache = null;
+  renderKeranjang();
+  document.getElementById('nama-pelanggan').value = '';
+  document.getElementById('nomor-meja').value = '';
+  document.getElementById('catatan').value = '';
 }
 </script>
-{% endblock %}
+</body>
+</html>

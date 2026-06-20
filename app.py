@@ -1,88 +1,100 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
-import json, os, random, string
+from datetime import datetime, date
+import json, random, string
+from printer import cetak_struk, list_ports
+from mqtt_client import panggil_meja, reset_meja
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///kantin.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///kasir.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'kantin-secret-2024'
-
+app.config['SECRET_KEY'] = 'kasir-secret-2024'
 db = SQLAlchemy(app)
 
 # ==================== MODELS ====================
 
-class MenuItem(db.Model):
+class Menu(db.Model):
+    __tablename__ = 'menu'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.String(200))
-    price = db.Column(db.Float, nullable=False)
-    category = db.Column(db.String(50))
-    image_emoji = db.Column(db.String(10), default='🍽️')
-    available = db.Column(db.Boolean, default=True)
-    orders = db.relationship('OrderItem', backref='menu_item', lazy=True)
+    nama = db.Column(db.String(100), nullable=False)
+    deskripsi = db.Column(db.String(200))
+    harga = db.Column(db.Float, nullable=False)
+    kategori = db.Column(db.String(50))  # 'Makanan' atau 'Minuman'
+    gambar = db.Column(db.String(300), default='')   # URL foto makanan
+    tersedia = db.Column(db.Boolean, default=True)
+    order_items = db.relationship('ItemPesanan', backref='menu', lazy=True)
 
-class Order(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_number = db.Column(db.String(20), unique=True, nullable=False)
-    customer_name = db.Column(db.String(100), nullable=False)
-    table_number = db.Column(db.String(10))
-    status = db.Column(db.String(30), default='pending')  # pending, paid, preparing, ready, done
-    total_amount = db.Column(db.Float, default=0)
-    payment_method = db.Column(db.String(30))
-    payment_status = db.Column(db.String(20), default='unpaid')  # unpaid, paid
-    pager_number = db.Column(db.Integer)
-    notes = db.Column(db.String(300))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    items = db.relationship('OrderItem', backref='order', lazy=True)
 
-class OrderItem(db.Model):
+class Pesanan(db.Model):
+    __tablename__ = 'pesanan'
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_item.id'), nullable=False)
-    quantity = db.Column(db.Integer, nullable=False)
-    unit_price = db.Column(db.Float, nullable=False)
+    nomor_pesanan = db.Column(db.String(20), unique=True, nullable=False)
+    nama_pelanggan = db.Column(db.String(100), nullable=False)
+    nomor_meja = db.Column(db.String(10))
+    catatan = db.Column(db.String(300))
+    total = db.Column(db.Float, default=0)
+    status = db.Column(db.String(20), default='selesai')  # langsung selesai setelah print
+    tanggal = db.Column(db.DateTime, default=datetime.utcnow)
+    items = db.relationship('ItemPesanan', backref='pesanan', lazy=True)
+
+
+class ItemPesanan(db.Model):
+    __tablename__ = 'item_pesanan'
+    id = db.Column(db.Integer, primary_key=True)
+    pesanan_id = db.Column(db.Integer, db.ForeignKey('pesanan.id'), nullable=False)
+    menu_id = db.Column(db.Integer, db.ForeignKey('menu.id'), nullable=False)
+    jumlah = db.Column(db.Integer, nullable=False)
+    harga_satuan = db.Column(db.Float, nullable=False)
     subtotal = db.Column(db.Float, nullable=False)
 
-class PagerDevice(db.Model):
+
+class TransaksiHarian(db.Model):
+    __tablename__ = 'transaksi_harian'
     id = db.Column(db.Integer, primary_key=True)
-    pager_number = db.Column(db.Integer, unique=True, nullable=False)
-    status = db.Column(db.String(20), default='available')  # available, in_use, calling, charging
-    battery = db.Column(db.Integer, default=100)
-    last_called = db.Column(db.DateTime)
-    current_order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True)
+    tanggal = db.Column(db.Date, unique=True, nullable=False, default=date.today)
+    total_pesanan = db.Column(db.Integer, default=0)       # jumlah transaksi
+    total_item = db.Column(db.Integer, default=0)          # total item terjual
+    pendapatan = db.Column(db.Float, default=0)            # total uang
+    detail_menu = db.Column(db.Text, default='{}')         # JSON: {menu_id: {nama, jumlah, pendapatan}}
+
+    def get_detail(self):
+        return json.loads(self.detail_menu or '{}')
+
+    def set_detail(self, data):
+        self.detail_menu = json.dumps(data)
 
 # ==================== HELPERS ====================
 
-def generate_order_number():
-    prefix = datetime.now().strftime('%m%d')
+def generate_nomor_pesanan():
+    prefix = datetime.now().strftime('%d%m')
     suffix = ''.join(random.choices(string.digits, k=4))
-    return f"KTN-{prefix}-{suffix}"
+    return f"KSR-{prefix}-{suffix}"
 
-def seed_data():
-    if MenuItem.query.count() == 0:
-        items = [
-            MenuItem(name="Nasi Goreng Spesial", description="Nasi goreng dengan telur, ayam, dan sayuran segar", price=18000, category="Makanan Berat", image_emoji="🍳"),
-            MenuItem(name="Mie Ayam Bakso", description="Mie kuning dengan potongan ayam dan bakso sapi", price=15000, category="Makanan Berat", image_emoji="🍜"),
-            MenuItem(name="Ayam Geprek", description="Ayam goreng crispy geprek dengan sambal level", price=20000, category="Makanan Berat", image_emoji="🍗"),
-            MenuItem(name="Soto Ayam", description="Soto kuning dengan ayam suwir dan pelengkap", price=14000, category="Makanan Berat", image_emoji="🥣"),
-            MenuItem(name="Gado-Gado", description="Sayuran rebus dengan saus kacang khas", price=13000, category="Makanan Ringan", image_emoji="🥗"),
-            MenuItem(name="Pisang Goreng", description="Pisang goreng crispy dengan taburan gula", price=8000, category="Snack", image_emoji="🍌"),
-            MenuItem(name="Tempe Mendoan", description="Tempe tipis goreng tepung krispy", price=6000, category="Snack", image_emoji="🟤"),
-            MenuItem(name="Es Teh Manis", description="Teh manis dingin segar", price=5000, category="Minuman", image_emoji="🧋"),
-            MenuItem(name="Es Jeruk", description="Jeruk peras segar dengan es", price=7000, category="Minuman", image_emoji="🍊"),
-            MenuItem(name="Jus Alpukat", description="Jus alpukat creamy dengan susu", price=12000, category="Minuman", image_emoji="🥑"),
-            MenuItem(name="Air Mineral", description="Air mineral dingin", price=3000, category="Minuman", image_emoji="💧"),
-            MenuItem(name="Kopi Hitam", description="Kopi robusta murni", price=6000, category="Minuman", image_emoji="☕"),
-        ]
-        db.session.bulk_save_objects(items)
 
-    if PagerDevice.query.count() == 0:
-        pagers = [PagerDevice(pager_number=i, battery=random.randint(60, 100)) for i in range(1, 21)]
-        db.session.bulk_save_objects(pagers)
+def update_transaksi_harian(pesanan):
+    """Update/buat record transaksi harian setelah pesanan selesai"""
+    hari_ini = date.today()
+    transaksi = TransaksiHarian.query.filter_by(tanggal=hari_ini).first()
+    if not transaksi:
+        transaksi = TransaksiHarian(tanggal=hari_ini, total_pesanan=0, total_item=0, pendapatan=0)
+        db.session.add(transaksi)
 
+    transaksi.total_pesanan += 1
+    transaksi.pendapatan += pesanan.total
+
+    detail = transaksi.get_detail()
+    for item in pesanan.items:
+        mid = str(item.menu_id)
+        if mid not in detail:
+            detail[mid] = {'nama': item.menu.nama, 'kategori': item.menu.kategori,
+                           'jumlah': 0, 'pendapatan': 0}
+        detail[mid]['jumlah'] += item.jumlah
+        detail[mid]['pendapatan'] += item.subtotal
+        transaksi.total_item += item.jumlah
+
+    transaksi.set_detail(detail)
     db.session.commit()
+
 
 # ==================== ROUTES ====================
 
@@ -90,172 +102,197 @@ def seed_data():
 def index():
     return redirect(url_for('menu'))
 
+
 @app.route('/menu')
 def menu():
-    categories = db.session.query(MenuItem.category).distinct().all()
-    categories = [c[0] for c in categories]
-    menu_items = MenuItem.query.filter_by(available=True).all()
-    return render_template('menu.html', menu_items=menu_items, categories=categories)
+    kategori_list = db.session.query(Menu.kategori).distinct().all()
+    kategori_list = [k[0] for k in kategori_list]
+    menu_items = Menu.query.filter_by(tersedia=True).all()
+    return render_template('menu.html', menu_items=menu_items, kategori_list=kategori_list)
 
-@app.route('/checkout', methods=['GET', 'POST'])
+
+@app.route('/checkout', methods=['POST'])
 def checkout():
-    if request.method == 'POST':
-        data = request.json
-        cart = data.get('cart', [])
-        customer_name = data.get('customer_name', 'Pelanggan')
-        table_number = data.get('table_number', '-')
-        notes = data.get('notes', '')
-
-        if not cart:
-            return jsonify({'success': False, 'message': 'Keranjang kosong!'})
-
-        order = Order(
-            order_number=generate_order_number(),
-            customer_name=customer_name,
-            table_number=table_number,
-            notes=notes,
-            status='pending',
-            payment_status='unpaid'
-        )
-        db.session.add(order)
-        db.session.flush()
-
-        total = 0
-        for item_data in cart:
-            menu_item = MenuItem.query.get(item_data['id'])
-            if menu_item:
-                subtotal = menu_item.price * item_data['qty']
-                total += subtotal
-                order_item = OrderItem(
-                    order_id=order.id,
-                    menu_item_id=menu_item.id,
-                    quantity=item_data['qty'],
-                    unit_price=menu_item.price,
-                    subtotal=subtotal
-                )
-                db.session.add(order_item)
-
-        order.total_amount = total
-        db.session.commit()
-        return jsonify({'success': True, 'order_id': order.id, 'order_number': order.order_number})
-
-    return render_template('checkout.html')
-
-@app.route('/payment/<int:order_id>')
-def payment(order_id):
-    order = Order.query.get_or_404(order_id)
-    order_items = OrderItem.query.filter_by(order_id=order_id).all()
-    return render_template('payment.html', order=order, order_items=order_items)
-
-@app.route('/api/pay/<int:order_id>', methods=['POST'])
-def process_payment(order_id):
-    order = Order.query.get_or_404(order_id)
+    """Buat pesanan dan langsung kembalikan data struk untuk print"""
     data = request.json
-    payment_method = data.get('method', 'cash')
+    cart = data.get('cart', [])
+    nama_pelanggan = data.get('nama_pelanggan', 'Pelanggan')
+    nomor_meja = data.get('nomor_meja', '-')
+    catatan = data.get('catatan', '')
 
-    # Assign pager
-    pager = PagerDevice.query.filter_by(status='available').first()
-    if pager:
-        pager.status = 'in_use'
-        pager.current_order_id = order.id
-        order.pager_number = pager.pager_number
+    if not cart:
+        return jsonify({'success': False, 'message': 'Keranjang kosong!'})
 
-    order.payment_method = payment_method
-    order.payment_status = 'paid'
-    order.status = 'preparing'
-    order.updated_at = datetime.utcnow()
+    pesanan = Pesanan(
+        nomor_pesanan=generate_nomor_pesanan(),
+        nama_pelanggan=nama_pelanggan,
+        nomor_meja=nomor_meja,
+        catatan=catatan,
+        status='selesai'
+    )
+    db.session.add(pesanan)
+    db.session.flush()
+
+    total = 0
+    items_data = []
+    for item_data in cart:
+        menu_item = Menu.query.get(item_data['id'])
+        if menu_item:
+            subtotal = menu_item.harga * item_data['qty']
+            total += subtotal
+            oi = ItemPesanan(
+                pesanan_id=pesanan.id,
+                menu_id=menu_item.id,
+                jumlah=item_data['qty'],
+                harga_satuan=menu_item.harga,
+                subtotal=subtotal
+            )
+            db.session.add(oi)
+            items_data.append({
+                'nama': menu_item.nama,
+                'jumlah': item_data['qty'],
+                'harga_satuan': menu_item.harga,
+                'subtotal': subtotal
+            })
+
+    pesanan.total = total
     db.session.commit()
+
+    # Update transaksi harian
+    # Re-query agar items ter-load
+    pesanan_reload = Pesanan.query.get(pesanan.id)
+    update_transaksi_harian(pesanan_reload)
+
+    waktu = pesanan.tanggal.strftime('%d/%m/%Y %H:%M')
 
     return jsonify({
         'success': True,
-        'pager_number': order.pager_number,
-        'order_number': order.order_number,
-        'message': f'Pembayaran berhasil! Ambil pager nomor {order.pager_number}'
+        'struk': {
+            'nomor_pesanan': pesanan.nomor_pesanan,
+            'nama_pelanggan': nama_pelanggan,
+            'nomor_meja': nomor_meja,
+            'catatan': catatan,
+            'items': items_data,
+            'total': total,
+            'waktu': waktu
+        }
     })
 
-@app.route('/pager')
-def pager_dashboard():
-    pagers = PagerDevice.query.order_by(PagerDevice.pager_number).all()
-    orders_preparing = Order.query.filter_by(status='preparing').all()
-    orders_ready = Order.query.filter_by(status='ready').all()
-    return render_template('pager.html', pagers=pagers,
-                           orders_preparing=orders_preparing,
-                           orders_ready=orders_ready)
-
-@app.route('/api/pager/call/<int:pager_number>', methods=['POST'])
-def call_pager(pager_number):
-    pager = PagerDevice.query.filter_by(pager_number=pager_number).first_or_404()
-    pager.status = 'calling'
-    pager.last_called = datetime.utcnow()
-
-    # Update related order
-    order = Order.query.filter_by(pager_number=pager_number, status='preparing').first()
-    if order:
-        order.status = 'ready'
-        order.updated_at = datetime.utcnow()
-
-    db.session.commit()
-    return jsonify({'success': True, 'message': f'Pager {pager_number} dipanggil!'})
-
-@app.route('/api/pager/reset/<int:pager_number>', methods=['POST'])
-def reset_pager(pager_number):
-    pager = PagerDevice.query.filter_by(pager_number=pager_number).first_or_404()
-    pager.status = 'available'
-    pager.current_order_id = None
-
-    order = Order.query.filter_by(pager_number=pager_number).filter(
-        Order.status.in_(['ready', 'preparing'])).first()
-    if order:
-        order.status = 'done'
-        order.updated_at = datetime.utcnow()
-
-    db.session.commit()
-    return jsonify({'success': True})
-
-@app.route('/api/pager/battery/<int:pager_number>', methods=['POST'])
-def update_battery(pager_number):
-    pager = PagerDevice.query.filter_by(pager_number=pager_number).first_or_404()
-    data = request.json
-    pager.battery = data.get('battery', pager.battery)
-    db.session.commit()
-    return jsonify({'success': True})
 
 @app.route('/admin')
 def admin():
-    orders = Order.query.order_by(Order.created_at.desc()).limit(50).all()
-    total_today = db.session.query(db.func.sum(Order.total_amount)).filter(
-        db.func.date(Order.created_at) == datetime.now().date(),
-        Order.payment_status == 'paid'
-    ).scalar() or 0
-    count_today = Order.query.filter(
-        db.func.date(Order.created_at) == datetime.now().date()).count()
-    return render_template('admin.html', orders=orders,
-                           total_today=total_today, count_today=count_today)
+    pesanan_list = Pesanan.query.order_by(Pesanan.tanggal.desc()).limit(50).all()
+    transaksi_hari_ini = TransaksiHarian.query.filter_by(tanggal=date.today()).first()
+    return render_template('admin.html', pesanan_list=pesanan_list,
+                           transaksi=transaksi_hari_ini)
 
-@app.route('/api/orders')
-def api_orders():
-    orders = Order.query.order_by(Order.created_at.desc()).limit(20).all()
-    result = []
-    for o in orders:
-        result.append({
-            'id': o.id, 'order_number': o.order_number,
-            'customer_name': o.customer_name, 'status': o.status,
-            'payment_status': o.payment_status, 'total_amount': o.total_amount,
-            'pager_number': o.pager_number, 'table_number': o.table_number,
-            'created_at': o.created_at.strftime('%H:%M')
-        })
+
+@app.route('/laporan')
+def laporan():
+    transaksi_list = TransaksiHarian.query.order_by(TransaksiHarian.tanggal.desc()).limit(30).all()
+    return render_template('laporan.html', transaksi_list=transaksi_list)
+
+
+@app.route('/admin/menu')
+def admin_menu():
+    menu_list = Menu.query.order_by(Menu.kategori, Menu.nama).all()
+    return render_template('admin_menu.html', menu_list=menu_list)
+
+
+@app.route('/api/menu/toggle/<int:menu_id>', methods=['POST'])
+def toggle_menu(menu_id):
+    item = Menu.query.get_or_404(menu_id)
+    item.tersedia = not item.tersedia
+    db.session.commit()
+    return jsonify({'success': True, 'tersedia': item.tersedia})
+
+
+@app.route('/api/menu/tambah', methods=['POST'])
+def tambah_menu():
+    data = request.json
+    item = Menu(
+        nama=data['nama'],
+        deskripsi=data.get('deskripsi', ''),
+        harga=float(data['harga']),
+        kategori=data['kategori'],
+        gambar=data.get('gambar', '')
+    )
+    db.session.add(item)
+    db.session.commit()
+    return jsonify({'success': True, 'id': item.id})
+
+
+@app.route('/api/menu/edit/<int:menu_id>', methods=['POST'])
+def edit_menu(menu_id):
+    item = Menu.query.get_or_404(menu_id)
+    data = request.json
+    item.nama = data.get('nama', item.nama)
+    item.deskripsi = data.get('deskripsi', item.deskripsi)
+    item.harga = float(data.get('harga', item.harga))
+    item.kategori = data.get('kategori', item.kategori)
+    item.gambar = data.get('gambar', item.gambar)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/menu/hapus/<int:menu_id>', methods=['POST'])
+def hapus_menu(menu_id):
+    item = Menu.query.get_or_404(menu_id)
+    item.tersedia = False  # soft delete
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/panggilan')
+def panggilan():
+    """Halaman kasir untuk panggil meja via pager ESP01"""
+    # Ambil pesanan yang sudah masuk (status selesai) hari ini
+    from datetime import date
+    pesanan_aktif = Pesanan.query.filter(
+        db.func.date(Pesanan.tanggal) == date.today()
+    ).order_by(Pesanan.tanggal.desc()).all()
+    return render_template('panggilan.html', pesanan_aktif=pesanan_aktif)
+
+
+@app.route('/api/pager/panggil', methods=['POST'])
+def api_panggil_meja():
+    """Publish MQTT ke ESP01 untuk panggil meja"""
+    data = request.json
+    nomor_meja = data.get('nomor_meja', '')
+    if not nomor_meja:
+        return jsonify({'success': False, 'error': 'Nomor meja kosong'})
+    result = panggil_meja(str(nomor_meja))
     return jsonify(result)
 
-@app.route('/api/pagers')
-def api_pagers():
-    pagers = PagerDevice.query.all()
-    return jsonify([{
-        'pager_number': p.pager_number, 'status': p.status,
-        'battery': p.battery, 'current_order_id': p.current_order_id
-    } for p in pagers])
+
+@app.route('/api/pager/reset', methods=['POST'])
+def api_reset_meja():
+    """Publish MQTT reset ke ESP01 (matikan buzzer+LED)"""
+    data = request.json
+    nomor_meja = data.get('nomor_meja', '')
+    if not nomor_meja:
+        return jsonify({'success': False, 'error': 'Nomor meja kosong'})
+    result = reset_meja(str(nomor_meja))
+    return jsonify(result)
+
+
+@app.route('/api/print', methods=['POST'])
+def api_print():
+    """Terima data struk dari frontend, cetak ke printer thermal serial"""
+    struk = request.json
+    if not struk:
+        return jsonify({'success': False, 'error': 'Data struk kosong'})
+    result = cetak_struk(struk)
+    return jsonify(result)
+
+
+@app.route('/api/ports')
+def api_ports():
+    """List serial port yang tersedia (untuk debug / setting)"""
+    return jsonify(list_ports())
+
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        seed_data()
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Harian — Kasir</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0f0e0d; --surface:#1a1917; --surface2:#252320;
+    --accent:#f5a623; --text:#f0ede8; --muted:#8a8680;
+    --border:#2e2c29; --success:#4caf7d;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; }
+  header {
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:14px 24px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; }
+  .logo span { color:var(--accent); }
+  nav { display:flex; gap:8px; }
+  nav a {
+    color:var(--muted); text-decoration:none; font-size:0.83rem;
+    padding:7px 14px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface2); transition:all .2s;
+  }
+  nav a:hover, nav a.aktif { color:var(--text); border-color:var(--muted); }
+  .container { max-width:1000px; margin:0 auto; padding:28px 20px; }
+
+  /* ACCORDION per hari */
+  .hari-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; margin-bottom:14px; overflow:hidden;
+  }
+  .hari-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px; cursor:pointer; user-select:none;
+    transition:background .2s;
+  }
+  .hari-header:hover { background:var(--surface2); }
+  .hari-tanggal { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; }
+  .hari-stats { display:flex; gap:20px; }
+  .hari-stat { text-align:right; }
+  .hari-stat .label { font-size:0.7rem; color:var(--muted); display:block; }
+  .hari-stat .nilai { font-family:'Syne',sans-serif; font-weight:700; color:var(--accent); }
+  .chevron { color:var(--muted); transition:transform .3s; font-size:0.9rem; }
+  .hari-card.open .chevron { transform:rotate(180deg); }
+
+  .hari-body { display:none; border-top:1px solid var(--border); }
+  .hari-card.open .hari-body { display:block; }
+
+  /* DETAIL TABLE */
+  table { width:100%; border-collapse:collapse; }
+  th {
+    background:var(--surface2); color:var(--muted); font-size:0.72rem;
+    font-family:'Syne',sans-serif; letter-spacing:1px; text-transform:uppercase;
+    padding:9px 16px; text-align:left;
+  }
+  td { padding:10px 16px; font-size:0.85rem; border-top:1px solid var(--border); }
+  tr:hover td { background:rgba(245,166,35,.04); }
+  .kat-badge {
+    font-size:0.68rem; padding:2px 8px; border-radius:8px;
+    font-family:'Syne',sans-serif; font-weight:600;
+  }
+  .kat-makanan { background:rgba(232,82,26,.15); color:#f57a4a; border:1px solid rgba(232,82,26,.3); }
+  .kat-minuman { background:rgba(76,175,125,.15); color:var(--success); border:1px solid rgba(76,175,125,.3); }
+  .col-harga { color:var(--accent); font-weight:500; }
+  .col-qty { text-align:center; font-weight:600; }
+
+  .empty-state { text-align:center; color:var(--muted); padding:60px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">KAS<span>IR</span> <span style="color:var(--muted);font-size:.85rem;font-family:'DM Sans',sans-serif;">Laporan</span></div>
+  <nav>
+    <a href="/">🛒 Menu</a>
+    <a href="/laporan" class="aktif">📅 Laporan</a>
+    <a href="/admin/menu">🍽️ Kelola Menu</a>
+  </nav>
+</header>
+
+<div class="container">
+  {% if transaksi_list %}
+    {% for t in transaksi_list %}
+    <div class="hari-card" id="card-{{ loop.index }}">
+      <div class="hari-header" onclick="toggleCard('card-{{ loop.index }}')">
+        <div class="hari-tanggal">📅 {{ t.tanggal.strftime('%A, %d %B %Y') }}</div>
+        <div class="hari-stats">
+          <div class="hari-stat">
+            <span class="label">Transaksi</span>
+            <span class="nilai">{{ t.total_pesanan }}</span>
+          </div>
+          <div class="hari-stat">
+            <span class="label">Item Terjual</span>
+            <span class="nilai">{{ t.total_item }}</span>
+          </div>
+          <div class="hari-stat">
+            <span class="label">Pendapatan</span>
+            <span class="nilai">Rp {{ "{:,.0f}".format(t.pendapatan) }}</span>
+          </div>
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="hari-body">
+        {% set detail = t.get_detail() %}
+        {% if detail %}
+        <table>
+          <thead>
+            <tr>
+              <th>Menu</th>
+              <th>Kategori</th>
+              <th style="text-align:center;">Terjual</th>
+              <th>Pendapatan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mid, info in detail.items() %}
+            <tr>
+              <td>{{ info.nama }}</td>
+              <td>
+                <span class="kat-badge kat-{{ info.kategori | lower }}">{{ info.kategori }}</span>
+              </td>
+              <td class="col-qty">{{ info.jumlah }}</td>
+              <td class="col-harga">Rp {{ "{:,.0f}".format(info.pendapatan) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem;">Tidak ada detail</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Auto buka card pertama -->
+    <script>
+      document.getElementById('card-1').classList.add('open');
+    </script>
+  {% else %}
+  <div class="empty-state">
+    <div style="font-size:3rem;margin-bottom:12px;">📊</div>
+    Belum ada data laporan harian
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleCard(id) {
+  const card = document.getElementById(id);
+  card.classList.toggle('open');
+}
+</script>
+</body>
+</html>

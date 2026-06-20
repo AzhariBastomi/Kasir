@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panggilan Meja — Kasir</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0f0e0d; --surface:#1a1917; --surface2:#252320;
+    --accent:#f5a623; --text:#f0ede8; --muted:#8a8680;
+    --border:#2e2c29; --success:#4caf7d; --danger:#e85555;
+    --calling:#e8521a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; }
+
+  header {
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:14px 24px; display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100;
+  }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; }
+  .logo span { color:var(--accent); }
+  nav { display:flex; gap:8px; }
+  nav a {
+    color:var(--muted); text-decoration:none; font-size:0.83rem;
+    padding:7px 14px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface2); transition:all .2s;
+  }
+  nav a:hover, nav a.aktif { color:var(--text); border-color:var(--muted); }
+
+  .container { max-width:1000px; margin:0 auto; padding:28px 20px; }
+
+  /* GRID LAYOUT */
+  .layout { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; }
+
+  /* ── PANEL KIRI: GRID MEJA ── */
+  .panel-title {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:1rem;
+    margin-bottom:14px; display:flex; align-items:center; gap:8px;
+  }
+  .panel-sub { font-size:0.78rem; color:var(--muted); font-weight:400; }
+
+  .meja-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(100px, 1fr));
+    gap:12px;
+  }
+
+  .meja-btn {
+    background:var(--surface); border:2px solid var(--border);
+    border-radius:14px; padding:16px 8px; cursor:pointer;
+    transition:all .2s; text-align:center; position:relative;
+    font-family:'DM Sans',sans-serif;
+  }
+  .meja-btn:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .meja-btn.memanggil {
+    border-color:var(--calling);
+    background:rgba(232,82,26,.1);
+    animation: pulse-border 1.2s infinite;
+  }
+  @keyframes pulse-border {
+    0%,100% { box-shadow: 0 0 0 0 rgba(232,82,26,.4); }
+    50%      { box-shadow: 0 0 0 8px rgba(232,82,26,0); }
+  }
+
+  .meja-nomor {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:1.6rem;
+    display:block; margin-bottom:4px;
+  }
+  .meja-label { font-size:0.72rem; color:var(--muted); display:block; }
+  .meja-status {
+    font-size:0.68rem; font-weight:600; margin-top:6px; display:block;
+    padding:2px 6px; border-radius:6px; display:inline-block;
+  }
+  .status-idle     { background:var(--surface2); color:var(--muted); }
+  .status-memanggil { background:rgba(232,82,26,.2); color:var(--calling); }
+
+  /* INPUT MANUAL */
+  .manual-section {
+    margin-top:20px; background:var(--surface);
+    border:1px solid var(--border); border-radius:14px; padding:18px;
+  }
+  .manual-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.85rem; margin-bottom:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .manual-row { display:flex; gap:10px; }
+  .manual-input {
+    flex:1; background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); padding:10px 14px; border-radius:10px;
+    font-family:'DM Sans',sans-serif; font-size:1rem; outline:none;
+    transition:border-color .2s;
+  }
+  .manual-input:focus { border-color:var(--accent); }
+  .btn-panggil-manual {
+    background:var(--accent); color:#000; border:none;
+    padding:10px 20px; border-radius:10px;
+    font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem;
+    cursor:pointer; transition:all .2s; white-space:nowrap;
+  }
+  .btn-panggil-manual:hover { background:#ffb940; }
+
+  /* ── PANEL KANAN: PESANAN AKTIF ── */
+  .pesanan-panel {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:18px; position:sticky; top:80px;
+    max-height:calc(100vh - 120px); overflow-y:auto;
+  }
+  .pesanan-item {
+    border:1px solid var(--border); border-radius:10px;
+    padding:12px; margin-bottom:10px; cursor:pointer;
+    transition:all .2s; background:var(--surface2);
+  }
+  .pesanan-item:hover { border-color:var(--accent); }
+  .pesanan-item.memanggil { border-color:var(--calling); background:rgba(232,82,26,.08); }
+
+  .pi-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .pi-meja { font-family:'Syne',sans-serif; font-weight:800; font-size:1rem; }
+  .pi-meja span { color:var(--accent); }
+  .pi-waktu { font-size:0.72rem; color:var(--muted); }
+  .pi-nama { font-size:0.82rem; color:var(--muted); margin-bottom:8px; }
+  .pi-actions { display:flex; gap:6px; }
+
+  .btn-call {
+    flex:1; background:var(--calling); color:#fff; border:none;
+    padding:8px; border-radius:8px; font-family:'Syne',sans-serif;
+    font-weight:700; font-size:0.8rem; cursor:pointer; transition:all .2s;
+  }
+  .btn-call:hover { background:#ff6b35; }
+  .btn-call.active { background:var(--success); }
+
+  .btn-reset {
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--muted); padding:8px 12px; border-radius:8px;
+    font-size:0.8rem; cursor:pointer; transition:all .2s;
+    font-family:'DM Sans',sans-serif;
+  }
+  .btn-reset:hover { border-color:var(--muted); color:var(--text); }
+
+  /* TOAST */
+  .toast {
+    position:fixed; bottom:24px; right:24px; z-index:999;
+    background:var(--success); color:#fff;
+    padding:12px 20px; border-radius:12px;
+    font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem;
+    opacity:0; transform:translateY(10px);
+    transition:all .3s; pointer-events:none;
+  }
+  .toast.show { opacity:1; transform:translateY(0); }
+  .toast.error { background:var(--danger); }
+
+  .empty-state { text-align:center; color:var(--muted); padding:30px; font-size:0.85rem; }
+
+  @media (max-width:700px) {
+    .layout { grid-template-columns:1fr; }
+    .pesanan-panel { position:static; max-height:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">KAS<span>IR</span> <span style="color:var(--muted);font-size:.85rem;font-family:'DM Sans',sans-serif;">Panggilan</span></div>
+  <nav>
+    <a href="/">🛒 Menu</a>
+    <a href="/laporan">📅 Laporan</a>
+    <a href="/admin/menu">🍽️ Kelola Menu</a>
+    <a href="/panggilan" class="aktif">📣 Panggilan</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="layout">
+
+    <!-- KIRI: GRID MEJA 1-20 -->
+    <div>
+      <div class="panel-title">
+        📣 Panggil Meja
+        <span class="panel-sub">Klik meja untuk kirim sinyal ke pager ESP01</span>
+      </div>
+
+      <div class="meja-grid" id="meja-grid">
+        {% for n in range(1, 21) %}
+        <div class="meja-btn" id="meja-{{ n }}" onclick="panggilMeja('{{ n }}', this)">
+          <span class="meja-nomor">{{ n }}</span>
+          <span class="meja-label">Meja</span>
+          <span class="meja-status status-idle" id="status-{{ n }}">Siap</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- INPUT MANUAL -->
+      <div class="manual-section">
+        <div class="manual-title">Panggil nomor meja lain</div>
+        <div class="manual-row">
+          <input class="manual-input" type="number" id="input-meja-manual"
+            placeholder="Nomor meja..." min="1" max="99"
+            onkeydown="if(event.key==='Enter') panggilManual()" />
+          <button class="btn-panggil-manual" onclick="panggilManual()">📣 Panggil</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KANAN: PESANAN HARI INI -->
+    <div class="pesanan-panel">
+      <div class="panel-title" style="font-size:.88rem;">📋 Pesanan Hari Ini</div>
+      {% if pesanan_aktif %}
+        {% for p in pesanan_aktif %}
+        <div class="pesanan-item" id="pi-{{ p.id }}">
+          <div class="pi-top">
+            <div class="pi-meja">Meja <span>{{ p.nomor_meja }}</span></div>
+            <div class="pi-waktu">{{ p.tanggal.strftime('%H:%M') }}</div>
+          </div>
+          <div class="pi-nama">{{ p.nama_pelanggan }} · Rp {{ "{:,.0f}".format(p.total) }}</div>
+          <div class="pi-actions">
+            <button class="btn-call" onclick="panggilDariPesanan('{{ p.nomor_meja }}', this)">
+              📣 Panggil Meja {{ p.nomor_meja }}
+            </button>
+            <button class="btn-reset" onclick="resetMeja('{{ p.nomor_meja }}', this)" title="Reset pager">✕</button>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">Belum ada pesanan hari ini</div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST NOTIF -->
+<div class="toast" id="toast"></div>
+
+<script>
+const mejaAktif = new Set(); // meja yang sedang memanggil
+
+function tampilToast(pesan, error=false) {
+  const t = document.getElementById('toast');
+  t.textContent = pesan;
+  t.className = 'toast show' + (error ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function kirimPanggilan(nomor_meja) {
+  const res = await fetch('/api/pager/panggil', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nomor_meja: String(nomor_meja) })
+  });
+  return await res.json();
+}
+
+async function kirimReset(nomor_meja) {
+  const res = await fetch('/api/pager/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nomor_meja: String(nomor_meja) })
+  });
+  return await res.json();
+}
+
+function setMejaState(nomor, calling) {
+  const btn  = document.getElementById(`meja-${nomor}`);
+  const stat = document.getElementById(`status-${nomor}`);
+  if (!btn) return;
+  if (calling) {
+    btn.classList.add('memanggil');
+    stat.textContent = '📣 Memanggil';
+    stat.className = 'meja-status status-memanggil';
+    mejaAktif.add(String(nomor));
+  } else {
+    btn.classList.remove('memanggil');
+    stat.textContent = 'Siap';
+    stat.className = 'meja-status status-idle';
+    mejaAktif.delete(String(nomor));
+  }
+}
+
+async function panggilMeja(nomor, el) {
+  // Toggle: kalau sedang memanggil → reset
+  if (mejaAktif.has(String(nomor))) {
+    const data = await kirimReset(nomor);
+    if (data.success) {
+      setMejaState(nomor, false);
+      tampilToast(`✅ Pager Meja ${nomor} direset`);
+    } else {
+      tampilToast('❌ Gagal reset: ' + data.error, true);
+    }
+    return;
+  }
+
+  const data = await kirimPanggilan(nomor);
+  if (data.success) {
+    setMejaState(nomor, true);
+    tampilToast(`📣 Meja ${nomor} dipanggil!`);
+  } else {
+    tampilToast('❌ Gagal: ' + data.error + ' — Cek Mosquitto berjalan?', true);
+  }
+}
+
+async function panggilDariPesanan(nomor, btnEl) {
+  if (mejaAktif.has(String(nomor))) {
+    const data = await kirimReset(nomor);
+    if (data.success) {
+      setMejaState(nomor, false);
+      btnEl.textContent = `📣 Panggil Meja ${nomor}`;
+      btnEl.classList.remove('active');
+      tampilToast(`✅ Pager Meja ${nomor} direset`);
+    } else {
+      tampilToast('❌ Gagal reset: ' + data.error, true);
+    }
+    return;
+  }
+
+  const data = await kirimPanggilan(nomor);
+  if (data.success) {
+    setMejaState(nomor, true);
+    btnEl.textContent = `✅ Memanggil Meja ${nomor}...`;
+    btnEl.classList.add('active');
+    tampilToast(`📣 Meja ${nomor} dipanggil!`);
+  } else {
+    tampilToast('❌ Gagal: ' + data.error + ' — Cek Mosquitto berjalan?', true);
+  }
+}
+
+async function resetMeja(nomor, btnEl) {
+  const data = await kirimReset(nomor);
+  if (data.success) {
+    setMejaState(nomor, false);
+    // Reset juga btn-call di pesanan panel
+    const callBtn = btnEl.previousElementSibling;
+    if (callBtn) {
+      callBtn.textContent = `📣 Panggil Meja ${nomor}`;
+      callBtn.classList.remove('active');
+    }
+    tampilToast(`✅ Pager Meja ${nomor} direset`);
+  } else {
+    tampilToast('❌ Gagal reset: ' + data.error, true);
+  }
+}
+
+async function panggilManual() {
+  const input = document.getElementById('input-meja-manual');
+  const nomor = input.value.trim();
+  if (!nomor) { tampilToast('Masukkan nomor meja dulu!', true); return; }
+  const data = await kirimPanggilan(nomor);
+  if (data.success) {
+    setMejaState(nomor, true);
+    tampilToast(`📣 Meja ${nomor} dipanggil!`);
+    input.value = '';
+  } else {
+    tampilToast('❌ Gagal: ' + data.error, true);
+  }
+}
+</script>
+</body>
+</html>

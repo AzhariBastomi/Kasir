@@ -2,7 +2,8 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 import json, random, string
-from printer import cetak_struk, list_ports
+from config import NAMA_TOKO, ALAMAT_TOKO, TELP_TOKO, FOOTER_STRUK
+from printer import cetak_struk
 from mqtt_client import panggil_meja, reset_meja
 
 app = Flask(__name__)
@@ -136,7 +137,7 @@ def checkout():
     total = 0
     items_data = []
     for item_data in cart:
-        menu_item = Menu.query.get(item_data['id'])
+        menu_item = db.session.get(Menu, item_data['id'])
         if menu_item:
             subtotal = menu_item.harga * item_data['qty']
             total += subtotal
@@ -160,7 +161,7 @@ def checkout():
 
     # Update transaksi harian
     # Re-query agar items ter-load
-    pesanan_reload = Pesanan.query.get(pesanan.id)
+    pesanan_reload = db.session.get(Pesanan, pesanan.id)
     update_transaksi_harian(pesanan_reload)
 
     waktu = pesanan.tanggal.strftime('%d/%m/%Y %H:%M')
@@ -175,14 +176,35 @@ def checkout():
         'waktu': waktu
     }
 
-    # Cetak langsung ke printer thermal di Raspberry Pi
-    hasil_print = cetak_struk(struk_data)
-
     return jsonify({
         'success': True,
-        'print': hasil_print,
         'struk': struk_data
     })
+
+
+@app.route('/print/<nomor_pesanan>', methods=['POST'])
+def print_struk(nomor_pesanan):
+    """Cetak struk langsung ke printer USB di Raspberry Pi"""
+    pesanan = Pesanan.query.filter_by(nomor_pesanan=nomor_pesanan).first_or_404()
+    struk_data = {
+        'nomor_pesanan': pesanan.nomor_pesanan,
+        'nama_pelanggan': pesanan.nama_pelanggan,
+        'nomor_meja': pesanan.nomor_meja or '-',
+        'catatan': pesanan.catatan or '',
+        'waktu': pesanan.tanggal.strftime('%d/%m/%Y %H:%M'),
+        'items': [
+            {
+                'nama': item.menu.nama,
+                'jumlah': item.jumlah,
+                'harga_satuan': item.harga_satuan,
+                'subtotal': item.subtotal
+            } for item in pesanan.items
+        ],
+        'total': pesanan.total
+    }
+    hasil = cetak_struk(struk_data)
+    return jsonify(hasil)
+
 
 
 @app.route('/admin')
@@ -282,20 +304,6 @@ def api_reset_meja():
     return jsonify(result)
 
 
-@app.route('/api/print', methods=['POST'])
-def api_print():
-    """Terima data struk dari frontend, cetak ke printer thermal serial"""
-    struk = request.json
-    if not struk:
-        return jsonify({'success': False, 'error': 'Data struk kosong'})
-    result = cetak_struk(struk)
-    return jsonify(result)
-
-
-@app.route('/api/ports')
-def api_ports():
-    """List serial port yang tersedia (untuk debug / setting)"""
-    return jsonify(list_ports())
 
 
 if __name__ == '__main__':

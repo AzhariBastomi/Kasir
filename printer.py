@@ -9,7 +9,7 @@ from config import (PRINTER_VENDOR_ID, PRINTER_PRODUCT_ID, PRINTER_INTERFACE,
                     NAMA_TOKO, ALAMAT_TOKO, TELP_TOKO, FOOTER_STRUK, MOCK_PRINT)
 
 # ── LEBAR KERTAS (karakter per baris, 80mm = 48 char, 58mm = 32 char) ──
-LEBAR = 48  # ganti 32 kalau kertas 58mm
+LEBAR = 32  # 58mm
 
 
 def cetak_struk(struk: dict) -> dict:
@@ -37,52 +37,55 @@ def cetak_struk(struk: dict) -> dict:
         )
 
         # ── HEADER ──
-        p.set(align='center', bold=True, double_height=True, double_width=True)
+        # GROOVY ~24pt: Font A, double height
+        p.set(align='center', bold=True, font='a', custom_size=True, width=1, height=2)
         p.text(NAMA_TOKO + '\n')
-        p.set(align='center', bold=False, double_height=False, double_width=False)
+        # Alamat ~20pt: Font A, double height (sedikit lebih kecil pakai bold off)
+        p.set(align='center', bold=False, font='a', custom_size=True, width=1, height=2)
         p.text(ALAMAT_TOKO + '\n')
+        # Telepon ~14pt: Font A normal
+        p.set(align='center', bold=False, font='a', custom_size=True, width=1, height=1)
         p.text(TELP_TOKO + '\n')
         p.text('=' * LEBAR + '\n')
 
-        # ── INFO PESANAN ──
-        p.set(align='left')
+        # ── INFO PESANAN ~14pt ──
+        p.set(align='left', font='a', custom_size=True, width=1, height=1)
         p.text(f"No  : {struk['nomor_pesanan']}\n")
         p.text(f"Tgl : {struk['waktu']}\n")
         p.text(f"Meja: {struk['nomor_meja']}   Pelanggan: {struk['nama_pelanggan']}\n")
         p.text('-' * LEBAR + '\n')
 
-        # ── ITEMS ──
-        p.set(align='left', bold=True)
+        # ── ITEMS ~14pt ──
+        p.set(align='left', bold=True, font='a', custom_size=True, width=1, height=1)
         p.text(f"{'Item':<{LEBAR - 12}}{'Qty':>4}{'Harga':>8}\n")
-        p.set(bold=False)
+        p.set(bold=False, font='a', custom_size=True, width=1, height=1)
         for item in struk['items']:
             nama = item['nama'][:LEBAR - 14]
             qty_str = f"x{item['jumlah']}"
             harga_str = f"Rp{item['subtotal']:,.0f}"
-            # Baris 1: nama + qty + subtotal
             sisa = LEBAR - len(qty_str) - len(harga_str)
             p.text(f"{nama:<{sisa}}{qty_str}{harga_str}\n")
-            # Baris 2: harga satuan
             p.text(f"  @Rp{item['harga_satuan']:,.0f}/pcs\n")
 
         p.text('-' * LEBAR + '\n')
 
-        # ── TOTAL ──
-        p.set(align='left', bold=True, double_height=True, double_width=True)
+        # ── TOTAL ~14pt bold ──
+        p.set(align='left', bold=True, font='a', custom_size=True, width=1, height=1)
         total_str = f"Rp{struk['total']:,.0f}"
-        p.text(f"TOTAL{total_str:>{LEBAR//2 - 5}}\n")
-        p.set(bold=False, double_height=False, double_width=False)
+        sisa_total = LEBAR - len('TOTAL') - len(total_str)
+        p.text(f"TOTAL{' ' * sisa_total}{total_str}\n")
+        p.set(bold=False, font='a', custom_size=True, width=1, height=1)
         p.text('=' * LEBAR + '\n')
 
-        # ── CATATAN ──
+        # ── CATATAN ~14pt ──
         if struk.get('catatan'):
             p.text(f"Catatan: {struk['catatan']}\n")
             p.text('-' * LEBAR + '\n')
 
-        # ── FOOTER ──
-        p.set(align='center')
+        # ── FOOTER ~20pt: Font A bold ──
+        p.set(align='center', bold=True, font='a', custom_size=True, width=1, height=2)
         p.text(FOOTER_STRUK + '\n')
-        p.text('\n\n\n')
+        p.set(custom_size=False)
 
         # ── CUT ──
         p.cut()

@@ -360,43 +360,10 @@
   </div>
 </div>
 
-<!-- STRUK TERMAL -->
-<div id="struk-print">
-  <div class="struk-nama-toko">
-    *** KANTIN KASIR ***<br>
-    Jl. Contoh No. 1, Jakarta<br>
-    Telp: 021-000000
-  </div>
-  <div class="struk-info">
-    <div><span>No</span><span id="s-nomor">-</span></div>
-    <div><span>Tgl</span><span id="s-tanggal">-</span></div>
-    <div><span>Meja</span><span id="s-meja">-</span></div>
-    <div><span>Pelanggan</span><span id="s-pelanggan">-</span></div>
-  </div>
-  <div class="struk-divider"></div>
-  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:11px;margin-bottom:3px;">
-    <span>Item</span><span>Qty</span><span>Harga</span>
-  </div>
-  <div id="s-items"></div>
-  <div class="struk-divider"></div>
-  <div class="struk-total">
-    <span>TOTAL</span>
-    <span id="s-total">Rp 0</span>
-  </div>
-  <div class="struk-divider"></div>
-  <div id="s-catatan-wrap" style="display:none;">
-    <div class="struk-catatan" id="s-catatan"></div>
-    <div class="struk-divider"></div>
-  </div>
-  <div class="struk-footer">
-    Terima kasih atas kunjungan Anda!<br>
-    Selamat menikmati 😊
-  </div>
-</div>
 
 <script>
 let keranjang = {}; // {id: {nama, harga, qty, kategori}}
-let strukcache = null;
+let nomorPesanan = null;
 
 function tambahKeKeranjang(id, nama, harga, kategori) {
   if (keranjang[id]) {
@@ -499,8 +466,7 @@ async function prosesCheckout() {
     const data = await res.json();
 
     if (data.success) {
-      strukcache = data.struk;
-      isiStruk(data.struk);
+      nomorPesanan = data.struk.nomor_pesanan;
       document.getElementById('modal-info').textContent = 'No: ' + data.struk.nomor_pesanan + ' — ' + data.struk.waktu;
       document.getElementById('modal-sukses').classList.add('show');
     } else {
@@ -514,40 +480,29 @@ async function prosesCheckout() {
   }
 }
 
-function isiStruk(s) {
-  document.getElementById('s-nomor').textContent = s.nomor_pesanan;
-  document.getElementById('s-tanggal').textContent = s.waktu;
-  document.getElementById('s-meja').textContent = s.nomor_meja;
-  document.getElementById('s-pelanggan').textContent = s.nama_pelanggan;
-  document.getElementById('s-total').textContent = 'Rp ' + formatRp(s.total);
-
-  let itemsHtml = '';
-  s.items.forEach(item => {
-    itemsHtml += `
-      <div class="struk-item">
-        <span class="struk-item-nama">${item.nama}</span>
-        <span class="struk-item-qty">x${item.jumlah}</span>
-        <span class="struk-item-harga">Rp${formatRp(item.subtotal)}</span>
-      </div>`;
-  });
-  document.getElementById('s-items').innerHTML = itemsHtml;
-
-  if (s.catatan) {
-    document.getElementById('s-catatan').textContent = '📝 ' + s.catatan;
-    document.getElementById('s-catatan-wrap').style.display = 'block';
-  } else {
-    document.getElementById('s-catatan-wrap').style.display = 'none';
+async function cetakStruk() {
+  if (!nomorPesanan) return;
+  const btn = document.querySelector('.btn-print');
+  btn.disabled = true;
+  btn.textContent = '⏳ Mencetak...';
+  try {
+    const res = await fetch('/print/' + nomorPesanan, { method: 'POST' });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { alert('Server error:\n' + text.slice(0, 300)); return; }
+    if (!data.success) alert('Gagal cetak: ' + (data.error || 'Error'));
+  } catch(e) {
+    alert('Network error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🖨️ Print Struk';
   }
-}
-
-function cetakStruk() {
-  window.print();
 }
 
 function tutupModal() {
   document.getElementById('modal-sukses').classList.remove('show');
   keranjang = {};
-  strukcache = null;
+  nomorPesanan = null;
   renderKeranjang();
   document.getElementById('nama-pelanggan').value = '';
   document.getElementById('nomor-meja').value = '';
